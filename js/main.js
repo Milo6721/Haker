@@ -46,3 +46,29 @@
   step();
   boot.addEventListener("click", () => boot.classList.add("done"));
 })();
+
+/* pełny ekran (przycisk lub klawisz F) */
+(function () {
+  const btn = $("#fsBtn");
+  const doc = document, root = doc.documentElement;
+  const isFs = () => !!(doc.fullscreenElement || doc.webkitFullscreenElement);
+  if (!(root.requestFullscreen || root.webkitRequestFullscreen)) { btn.style.display = "none"; return; }
+  const toggle = () => {
+    if (isFs()) (doc.exitFullscreen || doc.webkitExitFullscreen).call(doc);
+    else {
+      const p = (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+      if (p && p.catch) p.catch(() => {});
+    }
+  };
+  const sync = () => {
+    btn.textContent = isFs() ? "✕ WYJDŹ Z PEŁNEGO EKRANU" : "⛶ PEŁNY EKRAN";
+    btn.classList.toggle("on", isFs());
+  };
+  btn.addEventListener("click", toggle);
+  doc.addEventListener("fullscreenchange", sync);
+  doc.addEventListener("webkitfullscreenchange", sync);
+  doc.addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "f" || e.key === "F") toggle();
+  });
+})();
