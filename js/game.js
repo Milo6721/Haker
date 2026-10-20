@@ -411,7 +411,6 @@ const Game = (function () {
   seedBases();
   setTimeout(trickleLoop, 9000);
   setTimeout(raid, 24000);
-  setTimeout(() => $id("hint").classList.add("fade"), 14000);
 
   return { TYPES, SCEN, AB, use, restart, setScenario, ready, buy, shop, MISSILE_COST, aliveBases };
 })();
