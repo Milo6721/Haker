@@ -9,6 +9,17 @@
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
 <div class="scanbar" aria-hidden="true"></div>
+<div id="flash" aria-hidden="true"></div>
+
+<div id="gameover" class="gameover">
+  <div class="box">
+    <h2>SYSTEM COMPROMISED</h2>
+    <p>Obrona HQ upadła.</p>
+    <div class="big" id="goScore">0</div>
+    <small id="goStats"></small>
+    <button id="restartBtn" class="btn">▶ RESTART SYSTEMU</button>
+  </div>
+</div>
 
 <div id="boot" class="boot"><pre id="bootText"></pre></div>
 
@@ -24,9 +35,31 @@
     <div><span class="k">UTC</span><span id="clock" class="v">--:--:--</span></div>
     <div><span class="k">UPTIME</span><span id="uptime" class="v">00:00:00</span></div>
     <div><span class="k">SESJA</span><span id="session" class="v">0x0000</span></div>
+    <button class="sfx" id="sfxBtn" type="button">DŹWIĘK: OFF</button>
     <div class="status-pill" id="statusPill"><i></i><span id="statusText">SYSTEM SECURE</span></div>
   </div>
 </header>
+
+<section class="panel green hud" id="hud">
+  <div class="hud-stats">
+    <div><span class="k">WYNIK</span><span class="v" id="hScore">0</span></div>
+    <div><span class="k">REKORD</span><span class="v dim" id="hHigh">0</span></div>
+    <div><span class="k">FALA</span><span class="v" id="hWave">1</span></div>
+    <div><span class="k">COMBO</span><span class="v" id="hCombo">x1.00</span></div>
+    <div><span class="k">BLOKADY</span><span class="v" id="hBlocked">0</span></div>
+    <div><span class="k">SCENARIUSZ</span><span class="scen calm" id="hScen">—</span></div>
+  </div>
+  <div class="hud-int">
+    <div class="row"><span>INTEGRALNOŚĆ HQ</span><span id="hInt">100%</span></div>
+    <div class="track"><div class="fill" id="hIntFill"></div></div>
+  </div>
+  <div class="hud-ab">
+    <button class="ab" data-ab="fw" type="button"><kbd>1</kbd><b>FIREWALL</b><span class="t">GOTOWE</span></button>
+    <button class="ab" data-ab="purge" type="button"><kbd>2</kbd><b>PURGE</b><span class="t">GOTOWE</span></button>
+    <button class="ab" data-ab="auto" type="button"><kbd>3</kbd><b>AUTO-DEF</b><span class="t">GOTOWE</span></button>
+    <button class="ab" data-ab="patch" type="button"><kbd>4</kbd><b>NAPRAWA</b><span class="t">GOTOWE</span></button>
+  </div>
+</section>
 
 <main class="grid">
 
@@ -34,6 +67,7 @@
     <div class="panel-head"><h2>GLOBALNA MAPA ZAGROŻEŃ</h2><span class="tag" id="mapEvents">0 ZDARZEŃ</span></div>
     <div class="panel-body canvas-wrap">
       <canvas id="map"></canvas>
+      <div class="hint" id="hint">▸ KLIKAJ CZERWONE CELE NA MAPIE, ZANIM DOLECĄ DO HQ ◂</div>
       <div class="legend">
         <span><i class="dot c"></i>WĘZEŁ</span>
         <span><i class="dot g"></i>RUCH OK</span>
@@ -93,12 +127,20 @@
 
   <section class="panel green area-log">
     <div class="panel-head"><h2>TERMINAL // LOG SYSTEMOWY</h2><span class="tag blink">● REC</span></div>
-    <div class="panel-body"><div id="log" class="log"></div></div>
+    <div class="panel-body log-body">
+      <div id="log" class="log"></div>
+      <form id="cli" class="cli" autocomplete="off"><label for="cmd">root@node7:~$</label><input id="cmd" type="text" spellcheck="false" placeholder="wpisz help…"></form>
+    </div>
   </section>
 
   <section class="panel cyan area-servers">
     <div class="panel-head"><h2>STATUS SYSTEMÓW</h2><span class="tag" id="srvSummary">-/-</span></div>
     <div class="panel-body"><ul id="servers" class="servers"></ul></div>
+  </section>
+
+  <section class="panel cyan area-thr">
+    <div class="panel-head"><h2>AKTYWNE ZAGROŻENIA</h2><span class="tag" id="threatCount">0 AKTYWNYCH</span></div>
+    <div class="panel-body"><div id="threatList" class="threats"></div></div>
   </section>
 
   <section class="panel green area-res">
@@ -121,6 +163,7 @@
 <footer class="ticker"><div class="ticker-track" id="ticker"></div></footer>
 
 <script src="js/util.js"></script>
+<script src="js/state.js"></script>
 <script src="js/background.js"></script>
 <script src="js/map.js"></script>
 <script src="js/counters.js"></script>
@@ -129,6 +172,8 @@
 <script src="js/log.js"></script>
 <script src="js/servers.js"></script>
 <script src="js/widgets.js"></script>
+<script src="js/console.js"></script>
+<script src="js/game.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

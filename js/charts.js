@@ -104,7 +104,7 @@ class Scope {
     if (Math.random() < spikeP) s.spike = rand(0.2, 0.45);
     if (s.spike) { v += s.spike; s.spike *= 0.72; if (s.spike < 0.02) s.spike = 0; }
     s.v = clamp(s.v, 0.08, 0.85);
-    return clamp(v * base + (Math.random() - 0.5) * 0.04, 0.02, 1);
+    return clamp(v * base * G.boost + (Math.random() - 0.5) * 0.04, 0.02, 1);
   };
 
   new Scope("#chart1", {
@@ -135,7 +135,6 @@ class Scope {
       s.bpm = s.rate;
       return clamp(base + wave + (Math.random() - 0.5) * 0.012, 0, 1);
     },
-    fmt: () => ($("#ch3val").dataset.bpm || 72) + " bpm",
+    fmt: () => G.bpm + " bpm",
   });
-  setInterval(() => { $("#ch3val").dataset.bpm = randInt(68, 96); }, 2000);
 })();

@@ -1,5 +1,5 @@
 /* przewijający się log terminala */
-(function () {
+const Log = (function () {
   const box = $("#log");
   const MAX = 60;
   const ports = [22, 53, 80, 443, 445, 3306, 3389, 5432, 8080, 8443, 9200, 27017];
@@ -29,10 +29,6 @@
   const pool = [];
   T.forEach(t => { for (let i = 0; i < Math.round(weight[t[0]] * 3); i++) pool.push(t); });
 
-  const cursor = document.createElement("div");
-  cursor.className = "line";
-  cursor.innerHTML = `<span class="ts">root@node7:~$</span> <span class="cursor"></span>`;
-
   function add(level, text) {
     const d = new Date();
     const ts = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}.${pad(d.getUTCMilliseconds(), 3)}`;
@@ -40,11 +36,10 @@
     line.className = "line " + level;
     line.innerHTML = `<span class="ts">${ts}</span> <span class="lvl ${level}">[${level}]</span> <span class="msg"></span>`;
     $(".msg", line).textContent = text;
-    if (cursor.parentNode) box.insertBefore(line, cursor); else box.appendChild(line);
+    box.appendChild(line);
     while (box.children.length > MAX) box.removeChild(box.firstChild);
   }
 
-  box.appendChild(cursor);
   for (let i = 0; i < 12; i++) { const t = pick(pool); add(t[0], t[1]()); }
 
   (function next() {
@@ -54,7 +49,5 @@
     setTimeout(next, rand(150, 800));
   })();
 
-  bus.on("threat", city => { /* zdarzenia z mapy trafiają też do logu */
-    add("CRITICAL", `Hostile traffic from ${city} → HQ gateway`);
-  });
+  return { add, clear() { box.innerHTML = ""; } };
 })();

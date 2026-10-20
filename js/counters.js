@@ -3,7 +3,7 @@
   const items = [...document.querySelectorAll(".counter")].map(el => ({
     num: $(".num", el),
     rateEl: $(".rate", el),
-    value: parseFloat(el.dataset.start),
+    value: parseFloat(el.dataset.start) * rand(0.55, 1.5),
     rate: parseFloat(el.dataset.rate),
     jitter: parseFloat(el.dataset.jitter),
     cur: parseFloat(el.dataset.rate),

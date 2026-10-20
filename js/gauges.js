@@ -9,7 +9,7 @@ class Gauge {
     this.f = fitCanvas($(canvasId));
     this.t = 0;
     this.every = opts.every || 2600;
-    const retarget = () => { this.target = clamp(this.target + rand(-35, 35), 6, 97); };
+    const retarget = () => { this.target = opts.source ? clamp(opts.source() + rand(-5, 5), 4, 98) : clamp(this.target + rand(-35, 35), 6, 97); };
     setInterval(retarget, this.every);
     loop(dt => this.draw(dt));
   }
@@ -88,11 +88,11 @@ class Gauge {
 
 (function () {
   new Gauge("#gaugeCpu", "CPU LOAD", {
-    every: 2400,
+    every: 1200, source: () => G.cpu,
     sub: v => `${(1.2 + v / 25).toFixed(2)} GHz`,
   });
   const threat = new Gauge("#gaugeThreat", "THREAT LEVEL", {
-    every: 3200, hot: 70,
+    every: 1200, hot: 70, source: () => G.threatLevel,
     sub: v => (v < 30 ? "LOW" : v < 55 ? "GUARDED" : v < 70 ? "ELEVATED" : "SEVERE"),
   });
   // poziom zagrożenia steruje statusem w nagłówku

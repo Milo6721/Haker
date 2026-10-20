@@ -14,16 +14,17 @@
 
   // status pigułki zależy od poziomu zagrożenia i liczby padniętych serwerów
   const pill = $("#statusPill"), text = $("#statusText");
-  let level = 40, down = 0, critUntil = 0;
+  let level = 40, down = 0, critUntil = 0, integ = 100;
   const refresh = () => {
     pill.classList.remove("warn", "crit");
-    if (Date.now() < critUntil || level >= 75 || down >= 3) { pill.classList.add("crit"); text.textContent = "ALERT — ZAGROŻENIE KRYTYCZNE"; }
-    else if (level >= 55 || down >= 1) { pill.classList.add("warn"); text.textContent = "PODWYŻSZONA CZUJNOŚĆ"; }
+    if (G.over || integ < 30 || Date.now() < critUntil || level >= 75 || down >= 3) { pill.classList.add("crit"); text.textContent = "ALERT — ZAGROŻENIE KRYTYCZNE"; }
+    else if (integ < 65 || level >= 55 || down >= 1) { pill.classList.add("warn"); text.textContent = "PODWYŻSZONA CZUJNOŚĆ"; }
     else text.textContent = "SYSTEM SECURE";
   };
   bus.on("threatLevel", v => { level = v; refresh(); });
+  bus.on("integrity", v => { integ = v; refresh(); });
   bus.on("serversUp", s => { down = s.total - s.up; refresh(); });
-  bus.on("critical", () => { if (Math.random() < 0.15) { critUntil = Date.now() + 2500; refresh(); setTimeout(refresh, 2600); } });
+  
 
   // sekwencja bootowania
   const lines = [
