@@ -12,25 +12,56 @@
       || MapAPI.threats.find(t => t.type.name.toLowerCase() === q);
   };
 
+  const DESC = [
+    ["OBRONA", [
+      ["scan", "lista aktywnych zagrożeń"],
+      ["block <ip|id|typ|all>", "zablokuj zagrożenie"],
+      ["firewall", "spowalnia ataki (klawisz 1)"],
+      ["purge", "niszczy wszystkie ataki (2)"],
+      ["auto", "AI sam blokuje 10 s (3)"],
+      ["patch", "naprawa HQ +25% (4)"],
+      ["lockdown", "dławi ruch o 50% na 15 s"],
+    ]],
+    ["ATAK", [
+      ["bases", "lista wrogich baz C2"],
+      ["attack <baza|miasto|all>", "rakieta w bazę (-20 energii)"],
+      ["salvo", "salwa w każdą żywą bazę"],
+    ]],
+    ["SKLEP", [
+      ["buy turret", "dodatkowe działko obronne"],
+      ["buy missile", "mocniejsze rakiety"],
+      ["buy energy", "szybsza regeneracja energii"],
+    ]],
+    ["SYSTEM", [
+      ["status", "stan systemu i punktacja"],
+      ["servers", "lista systemów"],
+      ["restart <nazwa|all>", "restart serwera"],
+      ["intel", "bieżący scenariusz"],
+      ["ping <host>", "test połączenia"],
+      ["trace <ip>", "traceroute"],
+      ["nmap <ip>", "skan portów"],
+      ["clear · whoami · history", "narzędzia"],
+    ]],
+  ];
+
+  const findBase = q => {
+    q = String(q || "").toLowerCase();
+    return MapAPI.bases.find(b => !b.dead && (String(b.id) === q || b.name.toLowerCase() === q || b.city.toLowerCase().includes(q) || b.name.toLowerCase().includes(q)));
+  };
+  const fireAt = b => { if (MapAPI.onFire(b)) { MapAPI.fire(b, G.missileDmg); return true; } return false; };
+
   const CMDS = {
     help() {
-      out("Dostępne polecenia:");
-      [
-        "status              – stan systemu i punktacja",
-        "scan                – lista aktywnych zagrożeń",
-        "block <ip|id|typ>   – zablokuj zagrożenie (np. block ddos)",
-        "block all           – zablokuj wszystkie (= purge)",
-        "firewall | purge | auto | patch   – zdolności (klawisze 1-4)",
-        "lockdown            – spowalnia zagrożenia o 50% na 15 s (cd 60 s)",
-        "servers             – lista systemów",
-        "restart <nazwa|all> – restart serwera",
-        "ping <host> · trace <ip> · nmap <ip>   – narzędzia sieciowe",
-        "intel               – bieżący scenariusz",
-        "clear · whoami · history",
-      ].forEach(l => out("  " + l));
+      out("=== KOMENDY ===");
+      DESC.forEach(([grp, items]) => {
+        out(`-- ${grp}`);
+        items.forEach(([u, d]) => out(`  ${u.padEnd(26)} ${d}`));
+      });
+      out("Skróty: 1-4 zdolności · F pełny ekran · / konsola · klik na mapie: czerwone = blokuj, żółte = rakieta");
     },
     status() {
       out(`Integralność HQ: ${Math.round(G.integrity)}%  · Fala: ${G.wave}  · Wynik: ${G.score}  · Rekord: ${G.high}`);
+      out(`Energia: ${Math.floor(G.energy)}  · Kredyty: ${Math.floor(G.credits)}  · Działka: ${G.turrets}  · Rakiety dmg: ${G.missileDmg}`);
       out(`Zablokowano: ${G.blocked}  · Włamania: ${G.breached}  · Aktywne zagrożenia: ${MapAPI.threats.length}  · Serwery: ${Servers.up()}/${Servers.nodes.length}`);
     },
     scan() {
@@ -47,6 +78,28 @@
       later(() => MapAPI.hit(t, 99), 300);
       out(`Wstrzykiwanie reguły DROP dla ${t.ip}...`, "SCAN");
     },
+    bases() {
+      const l = MapAPI.bases.filter(b => !b.dead);
+      if (!l.length) return out("Brak aktywnych baz C2 – wróg odbudowuje siły.", "OK");
+      out(`Wrogie bazy C2: ${l.length}`, "SCAN");
+      l.forEach(b => out(`  #${b.id}  ${b.name.padEnd(10)} ${b.city.padEnd(14)} hp ${Math.max(0, b.hp)}/${b.hp0}`, "SCAN"));
+    },
+    attack(a) {
+      if (G.over) return out("System niedostępny.", "WARN");
+      if (!a) return out("Użycie: attack <baza|miasto|all>  (zobacz 'bases')", "WARN");
+      if (a === "all") return CMDS.salvo();
+      const b = findBase(a);
+      if (!b) return out(`Nie znaleziono bazy '${a}'. Użyj 'bases'.`, "WARN");
+      fireAt(b);
+    },
+    salvo() {
+      if (G.over) return out("System niedostępny.", "WARN");
+      const l = MapAPI.bases.filter(b => !b.dead);
+      if (!l.length) return out("Brak celów.", "WARN");
+      let i = 0;
+      l.forEach(b => { setTimeout(() => { if (!b.dead) fireAt(b); }, i++ * 250); });
+    },
+    buy(k) { Game.buy(k); },
     firewall() { Game.use("fw"); },
     purge() { Game.use("purge"); },
     auto() { Game.use("auto"); },
@@ -100,10 +153,8 @@
     exit() { out("Nie ma ucieczki z centrum dowodzenia.", "WARN"); },
   };
 
-  form.addEventListener("submit", e => {
-    e.preventDefault();
-    const line = input.value.trim();
-    input.value = "";
+  function run(line) {
+    line = line.trim();
     if (!line) return;
     hist.push(line); hi = hist.length;
     Log.add("CMD", "$ " + line);
@@ -111,6 +162,30 @@
     const fn = CMDS[c.toLowerCase()];
     if (fn && !c.startsWith("_")) fn(...args);
     else out(`${c}: command not found. Wpisz 'help'.`, "WARN");
+  }
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const line = input.value;
+    input.value = "";
+    run(line);
+  });
+
+  // panel z komendami – klik wykonuje lub wpisuje komendę do konsoli
+  const list = $("#cmdList");
+  DESC.forEach(([grp, items]) => {
+    const g = document.createElement("div"); g.className = "grp"; g.textContent = "▸ " + grp; list.appendChild(g);
+    items.forEach(([u, d]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "c";
+      b.innerHTML = "<b></b> <i></i>";
+      $("b", b).textContent = u; $("i", b).textContent = "– " + d;
+      b.addEventListener("click", () => {
+        const base = u.split(" ")[0];
+        if (/[<·]/.test(u)) { input.value = base + " "; input.focus(); }
+        else run(u);
+      });
+      list.appendChild(b);
+    });
   });
 
   input.addEventListener("keydown", e => {
@@ -123,5 +198,5 @@
     } else if (e.key === "Escape") input.blur();
   });
 
-  Log.add("INFO", "Konsola gotowa. Wpisz 'help' · klawisz / ustawia fokus · 1-4 zdolności · klikaj czerwone cele na mapie.");
+  Log.add("INFO", "Konsola gotowa. Wpisz 'help' (lista komend jest też w panelu KOMENDY & SKLEP). Czerwone cele = obrona, żółte bazy C2 = atak.");
 })();

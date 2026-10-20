@@ -6,6 +6,7 @@ const G = {
   active: 0, over: false,
   shieldUntil: 0, autoUntil: 0, lockUntil: 0,
   scenario: null,
+  energy: 100, credits: 0, turrets: 1, missileDmg: 2, regenLvl: 0,
   threatLevel: 30, cpu: 35, bpm: 72,
 };
 try { G.high = +localStorage.getItem("cyberops-high") || 0; } catch (e) { /* brak storage */ }

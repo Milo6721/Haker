@@ -80,23 +80,63 @@ const Game = (function () {
   const $id = id => document.getElementById(id);
   const hud = {
     score: $id("hScore"), high: $id("hHigh"), wave: $id("hWave"), combo: $id("hCombo"),
-    blocked: $id("hBlocked"), int: $id("hInt"), intFill: $id("hIntFill"), scen: $id("hScen"),
+    blocked: $id("hBlocked"), cred: $id("hCred"), turrets: $id("hTur"), en: $id("hEn"), enFill: $id("hEnFill"), int: $id("hInt"), intFill: $id("hIntFill"), scen: $id("hScen"),
   };
   const abBtns = [...document.querySelectorAll(".ab")];
   let lastBlock = 0, lastAuto = 0, scenTimer = null;
 
   // ---------- zdarzenia gry ----------
-  MapAPI.onBlock = t => {
+  MapAPI.onBlock = (t, auto) => {
     const now = Date.now();
-    G.combo = now - lastBlock < 6000 ? G.combo + 1 : 1;
-    lastBlock = now;
-    const pts = Math.round(t.type.sev * 10 * (1 + G.combo * 0.15));
+    let pts;
+    if (auto) {
+      pts = t.type.sev * 5;
+      Log.add("OK", `Turret neutralised ${t.type.name} from ${t.ip}  +${pts}`);
+    } else {
+      G.combo = now - lastBlock < 6000 ? G.combo + 1 : 1;
+      lastBlock = now;
+      pts = Math.round(t.type.sev * 10 * (1 + G.combo * 0.15));
+      Log.add("OK", `Blocked ${t.type.name} from ${t.ip} (${t.city})  +${pts}${G.combo > 2 ? "  COMBO x" + G.combo : ""}`);
+      Sfx.block();
+    }
     G.score += pts; G.blocked++;
+    G.credits += t.type.sev * (auto ? 2 : 3);
     G.integrity = Math.min(100, G.integrity + t.type.sev * 0.6);
     if (G.score > G.high) { G.high = G.score; try { localStorage.setItem("cyberops-high", G.high); } catch (e) { /* ok */ } }
-    Log.add("OK", `Blocked ${t.type.name} from ${t.ip} (${t.city})  +${pts}${G.combo > 2 ? "  COMBO x" + G.combo : ""}`);
-    Sfx.block();
     return pts;
+  };
+
+  // ---------- ofensywa: wrogie bazy C2 ----------
+  const MISSILE_COST = 20;
+  const baseHp = () => 3 + Math.ceil(G.wave * 1.2);
+  const aliveBases = () => MapAPI.bases.filter(b => !b.dead);
+  function seedBases() {
+    MapAPI.bases.length = 0;
+    for (let i = 0; i < 4; i++) MapAPI.addBase(baseHp());
+  }
+  MapAPI.onFire = b => {
+    if (G.over) return false;
+    if (G.energy < MISSILE_COST) { Log.add("WARN", `Za mało energii (${Math.floor(G.energy)}/${MISSILE_COST}) – poczekaj na regenerację`); return false; }
+    G.energy -= MISSILE_COST;
+    Log.add("INFO", `Rakieta wystrzelona w ${b.name} (${b.city}) – dmg ${G.missileDmg}`);
+    Sfx.ability();
+    return true;
+  };
+  MapAPI.onBaseKill = b => {
+    const pts = 100 + G.wave * 20;
+    G.score += pts; G.credits += 60;
+    Log.add("OK", `C2 ${b.name} (${b.city}) DESTROYED  +${pts} pts +60 cr – ataki z tego regionu ustały`);
+    Sfx.block();
+    setTimeout(() => { const i = MapAPI.bases.indexOf(b); if (i >= 0) MapAPI.bases.splice(i, 1); }, 2500);
+    setTimeout(() => {
+      if (G.over) return;
+      const nb = MapAPI.addBase(baseHp());
+      Log.add("WARN", `INTEL: nowa baza C2 wykryta w ${nb.city} (${nb.name})`);
+    }, rand(30, 45) * 1000);
+    if (!aliveBases().length) {
+      G.score += 200; G.credits += 100;
+      Log.add("OK", "WSZYSTKIE BAZY C2 ZNISZCZONE – bonus +200 pts +100 cr. Wróg odbudowuje siły…");
+    }
   };
 
   MapAPI.onBreach = t => {
@@ -129,20 +169,40 @@ const Game = (function () {
     for (const [k, w] of entries) { if ((r -= w) <= 0) return TYPES[k]; }
     return TYPES.ddos;
   }
-  function spawnDelay() {
-    const sc = G.scenario ? G.scenario.rate : 1;
-    const base = clamp(4.2 - G.wave * 0.25, 1.1, 4.2);
-    return (base / sc) * rand(0.7, 1.3) * 1000;
+  const sources = () => {
+    const alive = aliveBases().map(x => x.city);
+    const sc = G.scenario && G.scenario.src;
+    const pref = sc ? alive.filter(c => sc.includes(c)) : [];
+    if (pref.length && Math.random() < 0.5) return pick(pref);
+    return alive.length ? pick(alive) : null;
+  };
+  function launch(type) {
+    const th = MapAPI.spawnThreat(type, sources());
+    Log.add("WARN", `Incoming ${type.name} from ${th.ip} (${th.city}) – intercept on map!`);
+    if (type.sev >= 4) Sfx.alert();
   }
-  function spawnLoop() {
-    if (!G.over && MapAPI.threats.length < 9) {
-      const t = pickType();
-      const src = G.scenario && G.scenario.src;
-      const th = MapAPI.spawnThreat(t, src && Math.random() < 0.8 ? pick(src) : null);
-      Log.add("WARN", `Incoming ${t.name} detected from ${th.ip} (${th.city}) – intercept on map!`);
-      if (t.sev >= 4) Sfx.alert();
+
+  // rzadkie pojedyncze ataki (tło) – większość czasu jest spokojnie
+  function trickleLoop() {
+    if (!G.over && MapAPI.threats.length < 2 && aliveBases().length) launch(pickType());
+    const rate = G.scenario ? G.scenario.rate : 1;
+    setTimeout(trickleLoop, (rand(9, 15) / rate) * 1000);
+  }
+
+  // napady: co jakiś czas fala kilku ataków naraz
+  function raid() {
+    const alive = aliveBases().length;
+    if (!G.over && alive) {
+      const n = clamp(Math.round((2 + G.wave * 0.8 + rand(0, 2)) * (0.5 + alive / 8)), 2, 9);
+      Log.add("CRITICAL", `⚠ NALOT: ${n} wrogich pakietów w drodze – przygotuj obronę!`);
+      const rb = $id("raidBanner");
+      rb.textContent = `⚠ NALOT NADCHODZI ×${n} ⚠`;
+      rb.classList.remove("show"); void rb.offsetWidth; rb.classList.add("show");
+      Sfx.alert();
+      for (let i = 0; i < n; i++) setTimeout(() => { if (!G.over && MapAPI.threats.length < 12) launch(pickType()); }, 1500 + i * rand(350, 900));
     }
-    setTimeout(spawnLoop, spawnDelay());
+    const rate = G.scenario ? Math.sqrt(G.scenario.rate) : 1;
+    setTimeout(raid, (rand(30, 46) / rate) * 1000);
   }
 
   // ---------- scenariusze ----------
@@ -182,6 +242,39 @@ const Game = (function () {
     if (e.key === "/") { e.preventDefault(); $id("cmd").focus(); }
   });
 
+  // ---------- sklep ----------
+  const shop = {
+    turret:  { name: "DZIAŁKO",         max: () => G.turrets >= 4,    cost: () => 100 * G.turrets,            lvl: () => `${G.turrets}/4`,
+               apply() { G.turrets++; } },
+    missile: { name: "RAKIETY +1 DMG",  max: () => G.missileDmg >= 5, cost: () => 150 + 100 * (G.missileDmg - 2), lvl: () => `${G.missileDmg}/5`,
+               apply() { G.missileDmg++; } },
+    energy:  { name: "REGEN ENERGII",   max: () => G.regenLvl >= 3,   cost: () => 100 * (G.regenLvl + 1),     lvl: () => `${G.regenLvl}/3`,
+               apply() { G.regenLvl++; } },
+  };
+  function buy(kind) {
+    const it = shop[kind];
+    if (!it) { Log.add("WARN", "Użycie: buy <turret|missile|energy>"); return false; }
+    if (G.over) return false;
+    if (it.max()) { Log.add("WARN", `${it.name}: maksymalny poziom`); return false; }
+    const c = it.cost();
+    if (G.credits < c) { Log.add("WARN", `${it.name}: potrzeba ${c} cr (masz ${Math.floor(G.credits)})`); return false; }
+    G.credits -= c; it.apply();
+    Log.add("OK", `Zakupiono ${it.name} (poziom ${it.lvl()}) za ${c} cr`);
+    Sfx.ability();
+    return true;
+  }
+  document.addEventListener("click", e => { const b = e.target.closest("[data-buy]"); if (b) buy(b.dataset.buy); });
+  function renderShop() {
+    Object.entries(shop).forEach(([k, it]) => {
+      const btn = document.querySelector(`[data-buy="${k}"]`);
+      if (!btn) return;
+      btn.querySelector(".n").textContent = `${it.name} · ${it.lvl()}`;
+      btn.querySelector(".c").textContent = it.max() ? "MAX" : it.cost() + " cr";
+      btn.classList.toggle("poor", !it.max() && G.credits < it.cost());
+      btn.classList.toggle("maxed", it.max());
+    });
+  }
+
   // ---------- koniec gry ----------
   function gameOver() {
     G.over = true;
@@ -192,7 +285,8 @@ const Game = (function () {
     $id("gameover").classList.add("show");
   }
   function restart() {
-    Object.assign(G, { integrity: 100, score: 0, wave: 1, combo: 0, blocked: 0, breached: 0, over: false, shieldUntil: 0, autoUntil: 0, lockUntil: 0 });
+    Object.assign(G, { integrity: 100, score: 0, wave: 1, combo: 0, blocked: 0, breached: 0, over: false, shieldUntil: 0, autoUntil: 0, lockUntil: 0, energy: 100, credits: 0, turrets: 1, missileDmg: 2, regenLvl: 0 });
+    seedBases();
     Object.keys(ready).forEach(k => ready[k] = 0);
     Servers.restartAll();
     MapAPI.clear();
@@ -240,6 +334,7 @@ const Game = (function () {
 
   // ---------- główny tick ----------
   let waveClock = 0;
+  const turretCd = [];
   setInterval(() => {
     const now = Date.now();
     G.active = MapAPI.threats.length;
@@ -248,6 +343,21 @@ const Game = (function () {
     if (!G.over) {
       const ratio = Servers.up() / Servers.nodes.length;
       G.integrity = Math.min(100, G.integrity + 0.03 * ratio);
+      G.energy = Math.min(100, G.energy + (3.5 + 1.5 * G.regenLvl) * 0.1);
+
+      // działka obronne strzelają same
+      for (let i = 0; i < G.turrets; i++) {
+        turretCd[i] = (turretCd[i] || 1 + i * 0.8) - 0.1;
+        if (turretCd[i] <= 0 && MapAPI.threats.length) {
+          const cand = MapAPI.threats.filter(t => now - (t.lastShot || 0) > 600);
+          if (cand.length) {
+            const t = cand.reduce((a, b) => (b.t / b.dur > a.t / a.dur ? b : a));
+            t.lastShot = now;
+            MapAPI.shoot(t);
+            turretCd[i] = 3.2;
+          } else turretCd[i] = 0.3;
+        }
+      }
 
       waveClock += 0.1;
       if (waveClock >= 28) {
@@ -274,6 +384,11 @@ const Game = (function () {
     hud.wave.textContent = G.wave;
     hud.combo.textContent = G.combo > 1 ? "x" + (1 + G.combo * 0.15).toFixed(2) : "x1.00";
     hud.blocked.textContent = G.blocked;
+    hud.cred.textContent = Math.floor(G.credits);
+    hud.turrets.textContent = G.turrets;
+    hud.en.textContent = Math.floor(G.energy) + "⚡";
+    hud.enFill.style.width = G.energy + "%";
+    renderShop();
     hud.int.textContent = Math.round(G.integrity) + "%";
     hud.intFill.style.width = G.integrity + "%";
     hud.intFill.parentNode.className = "track " + (G.integrity < 25 ? "crit" : G.integrity < 55 ? "warn" : "");
@@ -293,8 +408,10 @@ const Game = (function () {
   // start
   setTimeout(() => setScenario(SCEN[0]), 100);
   scenTimer = setTimeout(nextScenario, 22000);
-  setTimeout(spawnLoop, 3500);
+  seedBases();
+  setTimeout(trickleLoop, 9000);
+  setTimeout(raid, 24000);
   setTimeout(() => $id("hint").classList.add("fade"), 14000);
 
-  return { TYPES, SCEN, AB, use, restart, setScenario, ready };
+  return { TYPES, SCEN, AB, use, restart, setScenario, ready, buy, shop, MISSILE_COST, aliveBases };
 })();

@@ -188,7 +188,12 @@
 
   // ---------- gra: klikalne zagrożenia ----------
   const threats = [];
+  const bases = [];
+  const missiles = [];
+  const bullets = [];
   const floaters = [];
+  let hoverBase = null;
+  let bid = 0;
   let hover = null;
   let tid = 0;
 
@@ -218,7 +223,7 @@
       threats.push(t);
       return t;
     },
-    hit(t, dmg = 1) {
+    hit(t, dmg = 1, auto = false) {
       if (!threats.includes(t)) return false;
       t.hp -= dmg;
       pulses.push({ x: t.px, y: t.py, t: 0, dur: 0.5, max: 12, color: COLORS.yellow });
@@ -227,13 +232,30 @@
         return false;
       }
       threats.splice(threats.indexOf(t), 1);
-      const pts = api.onBlock(t);
+      const pts = api.onBlock(t, auto);
       pulses.push({ x: t.px, y: t.py, t: 0, dur: 0.9, max: 34, color: COLORS.green2 });
       pulses.push({ x: t.px, y: t.py, t: 0.15, dur: 1.1, max: 20, color: COLORS.cyan });
       floaters.push({ x: t.px, y: t.py - 10, text: `BLOCKED +${pts}`, color: COLORS.green2, t: 0, dur: 1.4 });
       return true;
     },
-    clear() { threats.length = 0; },
+    clear() { threats.length = 0; missiles.length = 0; bullets.length = 0; },
+    // --- ofensywa: wrogie bazy C2, rakiety, działka obronne ---
+    bases, missiles, bullets,
+    onFire: () => true,          // game.js: sprawdza energię
+    onBaseKill: () => {},
+    addBase(hp) {
+      const used = bases.map(b => b.city);
+      let city; do { city = pick(CITIES); } while (city === HQ || used.includes(city[0]));
+      const b = { id: ++bid, name: "C2-" + city[0].replace(/\s/g, "").slice(0, 6), city: city[0],
+        lon: city[1] + rand(-1, 1), lat: city[2] + rand(-0.8, 0.8), x: 0, y: 0, hp, hp0: hp, dead: false, born: Date.now() };
+      bases.push(b);
+      return b;
+    },
+    fire(b, dmg) {
+      const [x0, y0] = proj(HQ[1], HQ[2]);
+      missiles.push({ b, dmg, t: 0, dur: rand(1.2, 1.6), x0, y0 });
+    },
+    shoot(t) { bullets.push({ target: t, t: 0, dur: 0.3 }); },
   };
   window.MapAPI = api;
 
@@ -242,18 +264,27 @@
     threats.forEach(t => { const d = Math.hypot(t.px - x, t.py - y); if (d < bd) { bd = d; best = t; } });
     return best;
   };
+  const nearestBase = (x, y, reach) => {
+    let best = null, bd = reach;
+    bases.forEach(b => { if (b.dead) return; const d = Math.hypot(b.x - x, b.y - y); if (d < bd) { bd = d; best = b; } });
+    return best;
+  };
   const local = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
   canvas.addEventListener("mousemove", e => {
     const [x, y] = local(e);
     hover = nearest(x, y, 20);
-    canvas.style.cursor = hover ? "crosshair" : "default";
+    hoverBase = hover ? null : nearestBase(x, y, 22);
+    canvas.style.cursor = hover || hoverBase ? "crosshair" : "default";
   });
-  canvas.addEventListener("mouseleave", () => { hover = null; });
+  canvas.addEventListener("mouseleave", () => { hover = null; hoverBase = null; });
   canvas.addEventListener("click", e => {
     if (G.over) return;
     const [x, y] = local(e);
     const t = nearest(x, y, e.pointerType === "touch" || "ontouchstart" in window ? 30 : 22);
+    const reach = e.pointerType === "touch" || "ontouchstart" in window ? 30 : 22;
+    const b = !t && nearestBase(x, y, reach);
     if (t) api.hit(t, 1);
+    else if (b) { if (api.onFire(b)) api.fire(b, G.missileDmg); }
     else pulses.push({ x, y, t: 0, dur: 0.6, max: 12, color: COLORS.cyan2 });
   });
 
@@ -338,6 +369,114 @@
     ctx.fillStyle = COLORS.green2;
     ctx.shadowBlur = 6;
     ctx.fillText("HQ", qx + 8, qy + 10);
+
+    // wrogie bazy C2
+    for (let i = bases.length - 1; i >= 0; i--) {
+      const b = bases[i];
+      [b.x, b.y] = proj(b.lon, b.lat);
+      const isH = hoverBase === b;
+      ctx.shadowColor = COLORS.yellow;
+      ctx.shadowBlur = b.dead ? 0 : 10;
+      if (b.dead) {
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = "#7a6a20";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(b.x - 5, b.y - 5); ctx.lineTo(b.x + 5, b.y + 5);
+        ctx.moveTo(b.x + 5, b.y - 5); ctx.lineTo(b.x - 5, b.y + 5);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      const sz = 6 + Math.sin(hqPhase * 4 + b.id) * 1 + (isH ? 2 : 0);
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(hqPhase * 0.8 + b.id);
+      ctx.strokeStyle = COLORS.yellow;
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(-sz, -sz, sz * 2, sz * 2);
+      ctx.restore();
+      ctx.fillStyle = COLORS.yellow;
+      ctx.fillRect(b.x - 2, b.y - 2, 4, 4);
+      // pasek HP
+      ctx.shadowBlur = 0;
+      const bw = 26;
+      ctx.fillStyle = "rgba(255,225,74,0.2)";
+      ctx.fillRect(b.x - bw / 2, b.y - sz - 9, bw, 3);
+      ctx.fillStyle = COLORS.yellow;
+      ctx.fillRect(b.x - bw / 2, b.y - sz - 9, bw * Math.max(0, b.hp) / b.hp0, 3);
+      ctx.shadowBlur = 5;
+      ctx.textAlign = "center";
+      ctx.fillStyle = isH ? "#fff" : COLORS.yellow;
+      ctx.fillText(isH ? `${b.name} · KLIKNIJ: ATAK (-20⚡)` : b.name, b.x, b.y + sz + 11);
+      ctx.textAlign = "left";
+    }
+
+    // rakiety gracza
+    for (let i = missiles.length - 1; i >= 0; i--) {
+      const m = missiles[i];
+      m.t += dt;
+      const k = m.t / m.dur;
+      const x1 = m.b.x, y1 = m.b.y;
+      const cx = (m.x0 + x1) / 2, cy = Math.min(m.y0, y1) - Math.abs(x1 - m.x0) * 0.35 - 24;
+      const at = u => { const q = 1 - u; return [q * q * m.x0 + 2 * q * u * cx + u * u * x1, q * q * m.y0 + 2 * q * u * cy + u * u * y1]; };
+      if (k >= 1) {
+        missiles.splice(i, 1);
+        if (m.b.dead) continue;
+        m.b.hp -= m.dmg;
+        pulses.push({ x: x1, y: y1, t: 0, dur: 0.8, max: 26, color: COLORS.yellow });
+        pulses.push({ x: x1, y: y1, t: 0.1, dur: 1, max: 14, color: COLORS.red });
+        floaters.push({ x: x1, y: y1 - 14, text: `-${m.dmg}`, color: COLORS.yellow, t: 0, dur: 1 });
+        if (m.b.hp <= 0) {
+          m.b.dead = true;
+          pulses.push({ x: x1, y: y1, t: 0, dur: 1.4, max: 52, color: COLORS.yellow });
+          pulses.push({ x: x1, y: y1, t: 0.25, dur: 1.6, max: 36, color: COLORS.red });
+          api.onBaseKill(m.b);
+        }
+        continue;
+      }
+      ctx.shadowColor = COLORS.cyan;
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = COLORS.cyan;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const from = Math.max(0, k - 0.3);
+      for (let s = 0; s <= 12; s++) {
+        const [x, y] = at(from + (k - from) * (s / 12));
+        s ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+      const [mx, my] = at(k);
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(mx, my, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // pociski działek obronnych
+    {
+      const [qx0, qy0] = proj(HQ[1], HQ[2]);
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bl = bullets[i];
+        bl.t += dt;
+        const k = bl.t / bl.dur;
+        const tg = bl.target;
+        if (k >= 1 || !threats.includes(tg)) {
+          bullets.splice(i, 1);
+          if (k >= 1 && threats.includes(tg)) api.hit(tg, 1, true);
+          continue;
+        }
+        const ex = tg.px, ey = tg.py;
+        const hx = qx0 + (ex - qx0) * k, hy = qy0 + (ey - qy0) * k;
+        const tk = Math.max(0, k - 0.18);
+        ctx.shadowColor = COLORS.green2;
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = COLORS.green2;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(qx0 + (ex - qx0) * tk, qy0 + (ey - qy0) * tk);
+        ctx.lineTo(hx, hy);
+        ctx.stroke();
+      }
+    }
 
     // zagrożenia gracza
     const slow = Date.now() < G.shieldUntil ? 0.3 : 1;

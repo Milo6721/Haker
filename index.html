@@ -48,11 +48,15 @@
     <div><span class="k">FALA</span><span class="v" id="hWave">1</span></div>
     <div><span class="k">COMBO</span><span class="v" id="hCombo">x1.00</span></div>
     <div><span class="k">BLOKADY</span><span class="v" id="hBlocked">0</span></div>
+    <div><span class="k">KREDYTY</span><span class="v cy" id="hCred">0</span></div>
+    <div><span class="k">DZIAŁKA</span><span class="v cy" id="hTur">1</span></div>
     <div><span class="k">SCENARIUSZ</span><span class="scen calm" id="hScen">—</span></div>
   </div>
   <div class="hud-int">
     <div class="row"><span>INTEGRALNOŚĆ HQ</span><span id="hInt">100%</span></div>
     <div class="track"><div class="fill" id="hIntFill"></div></div>
+    <div class="row en"><span>ENERGIA (RAKIETA −20)</span><span id="hEn">100⚡</span></div>
+    <div class="track en"><div class="fill" id="hEnFill"></div></div>
   </div>
   <div class="hud-ab">
     <button class="ab" data-ab="fw" type="button"><kbd>1</kbd><b>FIREWALL</b><span class="t">GOTOWE</span></button>
@@ -68,7 +72,8 @@
     <div class="panel-head"><h2>GLOBALNA MAPA ZAGROŻEŃ</h2><span class="tag" id="mapEvents">0 ZDARZEŃ</span></div>
     <div class="panel-body canvas-wrap">
       <canvas id="map"></canvas>
-      <div class="hint" id="hint">▸ KLIKAJ CZERWONE CELE NA MAPIE, ZANIM DOLECĄ DO HQ ◂</div>
+      <div class="hint" id="hint">▸ CZERWONE = ATAKI: KLIKAJ JE · ŻÓŁTE = WROGIE BAZY C2: KLIKNIJ, BY WYSTRZELIĆ RAKIETĘ ◂</div>
+      <div class="raid" id="raidBanner"></div>
       <div class="legend">
         <span><i class="dot c"></i>WĘZEŁ</span>
         <span><i class="dot g"></i>RUCH OK</span>
@@ -157,6 +162,18 @@
   <section class="panel green area-hex">
     <div class="panel-head"><h2>STRUMIEŃ DEKRYPTACJI</h2><span class="tag" id="hexKey">KEY:----</span></div>
     <div class="panel-body"><pre id="hex" class="hex"></pre></div>
+  </section>
+
+  <section class="panel cyan area-cmd">
+    <div class="panel-head"><h2>KOMENDY &amp; SKLEP</h2><span class="tag">KLIKNIJ</span></div>
+    <div class="panel-body cmdpanel">
+      <div class="shop">
+        <button type="button" class="buy" data-buy="turret"><span class="n"></span><span class="c"></span></button>
+        <button type="button" class="buy" data-buy="missile"><span class="n"></span><span class="c"></span></button>
+        <button type="button" class="buy" data-buy="energy"><span class="n"></span><span class="c"></span></button>
+      </div>
+      <div id="cmdList" class="cmdlist"></div>
+    </div>
   </section>
 
 </main>
