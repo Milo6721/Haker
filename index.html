@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CYBER//OPS — Centrum Dowodzenia</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="scanbar" aria-hidden="true"></div>
+
+<div id="boot" class="boot"><pre id="bootText"></pre></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◢◤</span>
+    <div>
+      <h1 class="glitch" data-text="CYBER//OPS">CYBER//OPS</h1>
+      <small>CENTRUM DOWODZENIA · NODE-7 · SYMULACJA</small>
+    </div>
+  </div>
+  <div class="top-stats">
+    <div><span class="k">UTC</span><span id="clock" class="v">--:--:--</span></div>
+    <div><span class="k">UPTIME</span><span id="uptime" class="v">00:00:00</span></div>
+    <div><span class="k">SESJA</span><span id="session" class="v">0x0000</span></div>
+    <div class="status-pill" id="statusPill"><i></i><span id="statusText">SYSTEM SECURE</span></div>
+  </div>
+</header>
+
+<main class="grid">
+
+  <section class="panel cyan area-map">
+    <div class="panel-head"><h2>GLOBALNA MAPA ZAGROŻEŃ</h2><span class="tag" id="mapEvents">0 ZDARZEŃ</span></div>
+    <div class="panel-body canvas-wrap">
+      <canvas id="map"></canvas>
+      <div class="legend">
+        <span><i class="dot c"></i>WĘZEŁ</span>
+        <span><i class="dot g"></i>RUCH OK</span>
+        <span><i class="dot r"></i>ZAGROŻENIE</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel green area-counters">
+    <div class="panel-head"><h2>LICZNIKI NA ŻYWO</h2><span class="tag">REAL-TIME</span></div>
+    <div class="panel-body counters">
+      <div class="counter" data-start="1284530" data-rate="3.7" data-jitter="2">
+        <label>ZABLOKOWANE ZAGROŻENIA</label>
+        <strong class="num">0</strong>
+        <em class="rate">+0/s</em>
+      </div>
+      <div class="counter alt" data-start="9876543210" data-rate="48210" data-jitter="0.35">
+        <label>PRZESKANOWANE PAKIETY</label>
+        <strong class="num">0</strong>
+        <em class="rate">+0/s</em>
+      </div>
+      <div class="counter" data-start="48213" data-rate="11.4" data-jitter="1.5">
+        <label>AKTYWNE POŁĄCZENIA</label>
+        <strong class="num">0</strong>
+        <em class="rate">+0/s</em>
+      </div>
+      <div class="counter alt" data-start="731" data-rate="0.45" data-jitter="3">
+        <label>WYKRYTE ANOMALIE</label>
+        <strong class="num">0</strong>
+        <em class="rate">+0/s</em>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel cyan area-ch1">
+    <div class="panel-head"><h2>RUCH PRZYCHODZĄCY</h2><span class="tag" id="ch1val">-- Mb/s</span></div>
+    <div class="panel-body canvas-wrap"><canvas id="chart1"></canvas></div>
+  </section>
+
+  <section class="panel green area-ch2">
+    <div class="panel-head"><h2>RUCH WYCHODZĄCY</h2><span class="tag" id="ch2val">-- Mb/s</span></div>
+    <div class="panel-body canvas-wrap"><canvas id="chart2"></canvas></div>
+  </section>
+
+  <section class="panel cyan area-ch3">
+    <div class="panel-head"><h2>HEARTBEAT RDZENIA</h2><span class="tag" id="ch3val">-- bpm</span></div>
+    <div class="panel-body canvas-wrap"><canvas id="chart3"></canvas></div>
+  </section>
+
+  <section class="panel green area-gauges">
+    <div class="panel-head"><h2>OBCIĄŻENIE / ZAGROŻENIE</h2><span class="tag">AUTO</span></div>
+    <div class="panel-body gauges">
+      <div class="gauge-box"><canvas id="gaugeCpu"></canvas></div>
+      <div class="gauge-box"><canvas id="gaugeThreat"></canvas></div>
+    </div>
+  </section>
+
+  <section class="panel green area-log">
+    <div class="panel-head"><h2>TERMINAL // LOG SYSTEMOWY</h2><span class="tag blink">● REC</span></div>
+    <div class="panel-body"><div id="log" class="log"></div></div>
+  </section>
+
+  <section class="panel cyan area-servers">
+    <div class="panel-head"><h2>STATUS SYSTEMÓW</h2><span class="tag" id="srvSummary">-/-</span></div>
+    <div class="panel-body"><ul id="servers" class="servers"></ul></div>
+  </section>
+
+  <section class="panel green area-res">
+    <div class="panel-head"><h2>ZASOBY</h2><span class="tag">NODE-7</span></div>
+    <div class="panel-body"><div id="bars" class="bars"></div></div>
+  </section>
+
+  <section class="panel cyan area-att">
+    <div class="panel-head"><h2>TOP ŹRÓDŁA ATAKÓW</h2><span class="tag">24H</span></div>
+    <div class="panel-body"><div id="attackers" class="attackers"></div></div>
+  </section>
+
+  <section class="panel green area-hex">
+    <div class="panel-head"><h2>STRUMIEŃ DEKRYPTACJI</h2><span class="tag" id="hexKey">KEY:----</span></div>
+    <div class="panel-body"><pre id="hex" class="hex"></pre></div>
+  </section>
+
+</main>
+
+<footer class="ticker"><div class="ticker-track" id="ticker"></div></footer>
+
+<script src="js/util.js"></script>
+<script src="js/background.js"></script>
+<script src="js/map.js"></script>
+<script src="js/counters.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/gauges.js"></script>
+<script src="js/log.js"></script>
+<script src="js/servers.js"></script>
+<script src="js/widgets.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
