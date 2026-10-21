@@ -51,6 +51,15 @@ button:focus-visible { outline: 2px solid var(--cy); outline-offset: 2px; }
 .chip .pips s.on { background: var(--yel); box-shadow: 0 0 5px var(--yel); }
 #dashBtn { position: absolute; right: max(18px, env(safe-area-inset-right, 0px)); bottom: max(22px, env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-radius: 50%; border: 2px solid var(--cy); background: rgba(52,240,255,.1); color: var(--cy); font-weight: 700; letter-spacing: .1em; font-size: 13px; pointer-events: auto; display: none; touch-action: none; }
 #dashBtn.cd { opacity: .35; }
+@media (max-width: 560px) {
+  .time { top: calc(max(12px, env(safe-area-inset-top, 0px)) + 62px); }
+  .time b { font-size: 22px; }
+  .time span { display: none; }
+  .kills { display: none; }
+  .chip { padding: 3px 5px 3px 3px; gap: 4px; }
+  .chip > span:nth-child(2) { display: none; }
+  .vit { width: min(200px, 52vw); }
+}
 @media (pointer: coarse) { #dashBtn { display: block; } .kit { bottom: max(120px, env(safe-area-inset-bottom, 0px)); } }
 
 .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 18px; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); text-align: center; background: radial-gradient(ellipse at center, rgba(7,6,15,.55), rgba(7,6,15,.9)); z-index: 5; }
@@ -227,6 +236,11 @@ const ET = {
   brute:    { r: 19, hp: 60, sp: 42, dmg: 12, xp: 6, col: "#b06cff" },
   shooter:  { r: 11, hp: 20, sp: 54, dmg: 6,  xp: 3, col: "#ffe14d" },
   splitter: { r: 16, hp: 32, sp: 56, dmg: 8,  xp: 3, col: "#ff4040" },
+  wraith:   { r: 12, hp: 18, sp: 98, dmg: 7,  xp: 2, col: "#8fa8ff" },
+  bomber:   { r: 11, hp: 16, sp: 118, dmg: 16, xp: 2, col: "#ff6a2a" },
+  charger:  { r: 14, hp: 34, sp: 58, dmg: 12, xp: 3, col: "#ff8fd1" },
+  sniper:   { r: 10, hp: 20, sp: 50, dmg: 12, xp: 3, col: "#ff2e63" },
+  nest:     { r: 18, hp: 100, sp: 16, dmg: 8,  xp: 7, col: "#3df0b8" },
   boss:     { r: 46, hp: 700, sp: 48, dmg: 18, xp: 80, col: "#ff9bd0" },
 };
 const WEAPONS = {
@@ -237,6 +251,10 @@ const WEAPONS = {
   rocket:    { name: "Rakiety",     g: "➤", col: "#ff8a3d", d: ["Samonaprowadzająca rakieta z wybuchem.", "Większy wybuch.", "Dwie rakiety.", "Częściej.", "Salwa rakiet."] },
   saw:       { name: "Piła",        g: "✜", col: "#9ad7ff", d: ["Wirująca piła leci przed siebie i wraca, tnąc wszystko.", "Dalszy zasięg.", "Dwie piły naraz.", "Szybszy rzut, większe ostrze.", "Trzy piły tną cały rój."] },
   mine:      { name: "Miny",        g: "✺", col: "#ffb86b", d: ["Zostawia za sobą miny, które wybuchają przy wrogach.", "Większy wybuch.", "Częściej i więcej min.", "Mocniejszy ładunek.", "Pole minowe: potężne wybuchy."] },
+  aura:      { name: "Aura",        g: "◉", col: "#7dffd9", d: ["Pole energii rani wszystko wokół rdzenia.", "Większy zasięg.", "Mocniejsze pulsy.", "Szersze pole.", "Ogromna aura, wrogowie topnieją."] },
+  meteor:    { name: "Meteory",     g: "☄", col: "#ff9d5c", d: ["Z nieba spada meteor w skupisko wrogów.", "Większy wybuch.", "Dwa meteory naraz.", "Częstszy deszcz.", "Deszcz meteorów."] },
+  drone:     { name: "Drony",       g: "✦", col: "#c7f0ff", d: ["Dron krąży wokół i strzela do wrogów.", "Dwa drony.", "Trzy drony.", "Cztery drony, mocniejsze strzały.", "Pięć dronów – latająca flota."] },
+  frost:     { name: "Mróz",        g: "❄", col: "#b6f2ff", d: ["Fala mrozu spowalnia i rani wrogów.", "Dalszy zasięg.", "Dłuższe spowolnienie.", "Częstsze fale.", "Zamrażająca burza."] },
   laser:     { name: "Laser",       g: "═", col: "#ff5959", d: ["Promień przecina szereg wrogów.", "Grubszy promień.", "Dwa promienie.", "Dłuższy i mocniejszy.", "Trzy promienie niszczące rój."] },
 };
 const PASSIVES = {
@@ -248,7 +266,7 @@ const PASSIVES = {
   regen:  { name: "Regeneracja", g: "♥", col: "#ff8aa8", d: "Odnawia 0.6 życia na sekundę." },
 };
 
-let G, P, enemies, pbul, ebul, gems, pups, parts, texts, rings, bolts, rockets, saws, mines, lasers, grid;
+let G, P, enemies, pbul, ebul, gems, pups, parts, texts, rings, bolts, rockets, saws, mines, lasers, meteors, grid;
 let cheat = false;
 let state = "menu";                                  // menu | play | levelup | paused | over
 let cam = { x: 0, y: 0, sx: 0, sy: 0 }, shake = 0, ambient = [];
@@ -258,9 +276,9 @@ try { best = +localStorage.getItem("roj-best") || 0; } catch (e) {}
 
 const needFor = l => Math.floor(3 + l * 2.5 + l * l * 0.35);
 function newGame() {
-  G = { t: 0, kills: 0, level: 1, xp: 0, need: needFor(1), spawn: 0, ring: 70, nextBoss: 120, boss: null, bossN: 0, lv: { bolt: 1, orbit: 0, nova: 0, lightning: 0, rocket: 0, saw: 0, mine: 0, laser: 0 }, ps: { speed: 0, hp: 0, magnet: 0, dmg: 0, haste: 0, regen: 0 }, wt: { bolt: 0.2, nova: 1.5, lightning: 1, rocket: 1.5, saw: 1, mine: 1, laser: 1.5 }, god: false, orbA: 0, auto: 0, comboT: 0, combo: 0, bot: G ? G.bot : false };
+  G = { t: 0, kills: 0, level: 1, xp: 0, need: needFor(1), spawn: 0, ring: 70, nextBoss: 120, boss: null, bossN: 0, lv: { bolt: 1, orbit: 0, nova: 0, lightning: 0, rocket: 0, saw: 0, mine: 0, laser: 0, aura: 0, meteor: 0, drone: 0, frost: 0 }, ps: { speed: 0, hp: 0, magnet: 0, dmg: 0, haste: 0, regen: 0 }, wt: { bolt: 0.2, nova: 1.5, lightning: 1, rocket: 1.5, saw: 1, mine: 1, laser: 1.5, aura: 0.25, meteor: 2, frost: 3 }, droneA: 0, droneT: [0, 0, 0, 0, 0], god: false, orbA: 0, auto: 0, comboT: 0, combo: 0, bot: G ? G.bot : false };
   P = { x: 0, y: 0, vx: 0, vy: 0, r: 11, hp: 120, max: 120, speed: 215, inv: 0, dashT: 0, dashCd: 0, mag: 120, dmg: 1, haste: 1, regen: 0, ang: 0, flash: 0 };
-  enemies = []; pbul = []; ebul = []; gems = []; pups = []; parts = []; texts = []; rings = []; bolts = []; rockets = []; saws = []; mines = []; lasers = [];
+  enemies = []; pbul = []; ebul = []; gems = []; pups = []; parts = []; texts = []; rings = []; bolts = []; rockets = []; saws = []; mines = []; lasers = []; meteors = [];
   cam.x = cam.sx = P.x; cam.y = cam.sy = P.y; shake = 0;
   refreshKit(); hudUpdate(true);
 }
@@ -306,7 +324,7 @@ function nearest(x, y, max, skip) {
 /* ============ wrogowie ============ */
 function spawnEnemy(type, x, y, extra) {
   const d = ET[type], hm = 1 + G.t / 190;
-  const e = Object.assign({ id: uid++, type, x, y, vx: 0, vy: 0, r: d.r, hp: d.hp * (type === "boss" ? 1 + G.bossN * 0.7 : hm), dmg: d.dmg * (1 + G.t / 650), col: d.col, flash: 0, t: rnd(0, 6), fire: rnd(1, 2.5), dead: false, hitOrb: 0, kx: 0, ky: 0, st: 0, st2: 0 }, extra);
+  const e = Object.assign({ id: uid++, type, x, y, vx: 0, vy: 0, r: d.r, hp: d.hp * (type === "boss" ? 1 + G.bossN * 0.7 : hm), dmg: d.dmg * (1 + G.t / 650), col: d.col, flash: 0, t: rnd(0, 6), fire: rnd(1, 2.5), dead: false, hitOrb: 0, kx: 0, ky: 0, st: 0, st2: 0, cs: 0, ct: rnd(1, 3), aim: 0, spawnT: rnd(1.5, 3), slow: 0 }, extra);
   e.max = e.hp;
   enemies.push(e); return e;
 }
@@ -320,6 +338,11 @@ function pickType() {
   if (t > 55) w.push(["shooter", 1.4 + t * 0.012]);
   if (t > 85) w.push(["brute", 1.1 + t * 0.01]);
   if (t > 120) w.push(["splitter", 1.1 + t * 0.01]);
+  if (t > 70) w.push(["wraith", 1.2 + t * 0.01]);
+  if (t > 100) w.push(["bomber", 1 + t * 0.01]);
+  if (t > 130) w.push(["charger", 1 + t * 0.008]);
+  if (t > 160) w.push(["sniper", 0.8 + t * 0.006]);
+  if (t > 190) w.push(["nest", 0.35 + t * 0.002]);
   let r = Math.random() * w.reduce((a, b) => a + b[1], 0);
   for (const [k, v] of w) if ((r -= v) <= 0) return k;
   return "grunt";
@@ -362,14 +385,36 @@ function updateEnemies(dt) {
       if (d < 250) { tx = -ux; ty = -uy; sp *= 0.8; } else if (d < 320) { tx = -uy; ty = ux; sp *= 0.6; }
       e.fire -= dt;
       if (e.fire <= 0 && d < 520) { e.fire = rnd(2.2, 3.2); enemyBullet(e.x, e.y, Math.atan2(dy, dx), 165, e.dmg, "#ffe14d"); }
+    } else if (e.type === "wraith") {
+      const sw = Math.sin(e.t * 3.2) * 1.1; tx = ux - uy * sw; ty = uy + ux * sw;
+    } else if (e.type === "bomber") {
+      sp *= d < 160 ? 1.5 : 1;
+    } else if (e.type === "charger") {
+      e.ct -= dt;
+      if (e.cs === 0) { if (d < 340) { tx = -uy * 0.5; ty = ux * 0.5; } if (e.ct <= 0 && d < 520) { e.cs = 1; e.ct = 0.75; } }
+      else if (e.cs === 1) { sp = 0; e.cx = ux; e.cy = uy; if (e.ct <= 0) { e.cs = 2; e.ct = 0.55; } }
+      else if (e.cs === 2) { sp = 520; tx = e.cx; ty = e.cy; if (e.ct <= 0) { e.cs = 3; e.ct = 1; } }
+      else { sp = 18; if (e.ct <= 0) { e.cs = 0; e.ct = rnd(1.5, 3); } }
+    } else if (e.type === "sniper") {
+      if (e.aim > 0) { sp = 0; e.aim -= dt; if (e.aim > 0.3) e.aa = Math.atan2(dy, dx); if (e.aim <= 0) { enemyBullet(e.x, e.y, e.aa, 560, e.dmg, "#ff2e63", 4); } }
+      else {
+        if (d < 340) { tx = -ux; ty = -uy; sp *= 1.3; } else if (d > 470) { sp *= 1; } else { sp = 0; }
+        e.fire -= dt; if (e.fire <= 0 && d < 640) { e.fire = rnd(3.2, 4.4); e.aim = 0.9; e.aa = Math.atan2(dy, dx); }
+      }
+    } else if (e.type === "nest") {
+      e.spawnT -= dt;
+      if (e.spawnT <= 0) { e.spawnT = 3.4; if (enemies.length < 420) { const a = rnd(0, TAU); spawnEnemy(Math.random() < 0.3 ? "dart" : "grunt", e.x + Math.cos(a) * 24, e.y + Math.sin(a) * 24); ring(e.x, e.y, 36, "#3df0b8", 0.3, 2); } }
     } else if (e.type === "boss") {
       e.st -= dt; e.st2 -= dt;
+      if (e.spiral > 0) { e.spiral -= dt; e.spT = (e.spT || 0) - dt; if (e.spT <= 0) { e.spT = 0.09; const a = e.t * 3.4; enemyBullet(e.x, e.y, a, 140 + G.bossN * 5, 6 + G.bossN, "#ff9bd0", 5); enemyBullet(e.x, e.y, a + Math.PI, 140 + G.bossN * 5, 6 + G.bossN, "#ff9bd0", 5); } }
       if (e.charge > 0) { e.charge -= dt; sp = 430; tx = e.cx; ty = e.cy; if (e.charge <= 0) { addShake(5); } }
       else {
-        if (e.st <= 0) { e.st = Math.max(2, 3.4 - G.bossN * 0.15); const n = 12 + G.bossN * 3, o = rnd(0, TAU); for (let i = 0; i < n; i++) enemyBullet(e.x, e.y, o + i / n * TAU, 125 + G.bossN * 6, 7 + G.bossN * 1.5, "#ff9bd0", 6); ring(e.x, e.y, 90, "#ff9bd0", 0.5, 4); }
+        if (e.st <= 0 && G.bossN % 2 === 0 && !e.spiral) { e.st = 5; e.spiral = 2.6; text(e.x, e.y - e.r - 14, "SPIRALA", "#ff9bd0", 16); }
+        else if (e.st <= 0) { e.st = Math.max(2, 3.4 - G.bossN * 0.15); const n = 12 + G.bossN * 3, o = rnd(0, TAU); for (let i = 0; i < n; i++) enemyBullet(e.x, e.y, o + i / n * TAU, 125 + G.bossN * 6, 7 + G.bossN * 1.5, "#ff9bd0", 6); ring(e.x, e.y, 90, "#ff9bd0", 0.5, 4); }
         if (e.st2 <= 0) { e.st2 = rnd(8, 11); if (Math.random() < 0.5) { e.charge = 0.65; e.cx = ux; e.cy = uy; text(e.x, e.y - e.r - 14, "!", "#ff3d9a", 26); } else if (enemies.length < 520) for (let i = 0; i < 4 + G.bossN * 2; i++) { const a = rnd(0, TAU); spawnEnemy("grunt", e.x + Math.cos(a) * 60, e.y + Math.sin(a) * 60); } }
       }
     }
+    if (G.t < e.slow) sp *= 0.35;
     // odpychanie od sąsiadów
     let px = 0, py = 0, c = 0;
     near(e.x, e.y, e.r + 12, o => {
@@ -381,17 +426,20 @@ function updateEnemies(dt) {
     e.vx = tx * sp + px * 110 + e.kx; e.vy = ty * sp + py * 110 + e.ky;
     e.x += e.vx * dt; e.y += e.vy * dt;
     // kontakt z graczem
-    if (d < e.r + P.r && P.inv <= 0) hurtPlayer(e.dmg, e.x, e.y);
+    if (e.type === "bomber" && d < e.r + P.r + 16) {
+      e.dead = true; ring(e.x, e.y, 70, "#ff6a2a", 0.4, 5); burst(e.x, e.y, "#ff6a2a", 22, 260, 0.5, 3.4); Snd.boom(); addShake(4);
+      if (d < 70 && P.inv <= 0) hurtPlayer(e.dmg, e.x, e.y);
+    } else if (d < e.r + P.r && P.inv <= 0) hurtPlayer(e.dmg, e.x, e.y);
   }
   // sprzątanie
   enemies = enemies.filter(e => !e.dead);
 }
-function hurtEnemy(e, dmg, kx = 0, ky = 0, crit = false) {
+function hurtEnemy(e, dmg, kx = 0, ky = 0, crit = false, silent = false) {
   if (e.dead) return;
-  e.hp -= dmg; e.flash = 1;
+  if (e.type === "wraith" && Math.sin(e.t * 4) > 0.7) dmg *= 0.3;
+  e.hp -= dmg; e.flash = silent ? 0.4 : 1;
   e.kx += kx; e.ky += ky;
-  text(e.x + rnd(-6, 6), e.y - e.r, Math.round(dmg), crit ? "#ffe14d" : "#ffffff", crit ? 17 : 12);
-  Snd.hit();
+  if (!silent) { text(e.x + rnd(-6, 6), e.y - e.r, Math.round(dmg), crit ? "#ffe14d" : "#ffffff", crit ? 17 : 12); Snd.hit(); }
   if (e.hp <= 0) killEnemy(e);
 }
 function killEnemy(e) {
@@ -496,6 +544,47 @@ function explode(x, y, rad, dmg, col) {
   ring(x, y, rad, col, 0.35, 4); burst(x, y, col, 14, 210, 0.5, 3); Snd.boom(); addShake(1.5);
 }
 function updateNewWeapons(dt) {
+  const L = G.lv, w = G.wt, dm = P.dmg;
+  const tick = (k, cd, fn) => { w[k] -= dt * P.haste; if (w[k] <= 0) { if (fn()) w[k] = cd; else w[k] = 0.15; } };
+  // Aura – ciągłe pole
+  if (L.aura) {
+    w.aura -= dt * P.haste;
+    if (w.aura <= 0) {
+      w.aura = 0.25; const R = 62 + 16 * L.aura, d = (4 + 2.6 * L.aura) * dm;
+      near(P.x, P.y, R + 50, e => { if (!e.dead && Math.hypot(e.x - P.x, e.y - P.y) < R + e.r) hurtEnemy(e, d, (e.x - P.x) * 0.4, (e.y - P.y) * 0.4, false, true); });
+    }
+  }
+  // Meteory z telegrafem
+  if (L.meteor) tick("meteor", 3.2 - 0.3 * L.meteor, () => {
+    const n = 1 + Math.floor((L.meteor + 1) / 2); let f = false;
+    const pool = enemies.filter(e => !e.dead && Math.hypot(e.x - P.x, e.y - P.y) < 460);
+    for (let i = 0; i < n && pool.length; i++) { const e = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; meteors.push({ x: e.x + rnd(-20, 20), y: e.y + rnd(-20, 20), t: 0, delay: 0.8, rad: 64 + 9 * L.meteor, dmg: (34 + 11 * L.meteor) * dm }); f = true; }
+    return f;
+  });
+  for (const m of meteors) { m.t += dt; if (m.t >= m.delay && !m.done) { m.done = true; explode(m.x, m.y, m.rad, m.dmg, "#ff9d5c"); addShake(3); } }
+  meteors = meteors.filter(m => !m.done);
+  // Drony
+  if (L.drone) {
+    G.droneA += dt * 1.7;
+    for (let i = 0; i < L.drone; i++) {
+      G.droneT[i] -= dt * P.haste;
+      if (G.droneT[i] <= 0) {
+        const a = G.droneA + i / L.drone * TAU, dx = P.x + Math.cos(a) * 96, dy = P.y + Math.sin(a) * 96;
+        const e = nearest(dx, dy, 480);
+        if (e) { const aa = Math.atan2(e.y - dy, e.x - dx); pbul.push({ x: dx, y: dy, vx: Math.cos(aa) * 560, vy: Math.sin(aa) * 560, r: 3, dmg: (6 + 3 * L.drone) * dm, crit: false, pierce: 0, life: 0.9, hit: [] }); G.droneT[i] = 0.75; Snd.shot(); } else G.droneT[i] = 0.2;
+      }
+    }
+  }
+  // Mróz
+  if (L.frost) tick("frost", 4.6 - 0.45 * L.frost, () => {
+    if (!enemies.length) return false;
+    rings.push({ x: P.x, y: P.y, r: 6, max: 140 + 22 * L.frost, col: "#b6f2ff", t: 0, dur: 0.6, w: 6, frost: true, dmg: (7 + 3 * L.frost) * dm, slow: 1.8 + 0.4 * L.frost, hit: new Set(), follow: true });
+    Snd.boom(); return true;
+  });
+  for (const r of rings) {
+    if (!r.frost) continue;
+    near(r.x, r.y, r.r + 60, e => { if (e.dead || r.hit.has(e)) return; const d = Math.hypot(e.x - r.x, e.y - r.y); if (d <= r.r + e.r) { r.hit.add(e); e.slow = G.t + r.slow; hurtEnemy(e, r.dmg, 0, 0, false, true); parts.push({ x: e.x, y: e.y, vx: 0, vy: 0, life: 0.3, max: 0.3, col: "#b6f2ff", size: 5 }); } });
+  }
   for (const sw of saws) {
     sw.rot += dt * 18;
     const sp = sw.sp * (sw.out ? 1 : 1.15);
@@ -520,7 +609,7 @@ function updateNewWeapons(dt) {
         const rx = e.x - P.x, ry = e.y - P.y, t = rx * ca + ry * sa;
         if (t < 0 || t > l.len) continue;
         const d = Math.abs(rx * sa - ry * ca);
-        if (d < e.r + l.w / 2) hurtEnemy(e, l.dmg, 0, 0, false);
+        if (d < e.r + l.w / 2) hurtEnemy(e, l.dmg, 0, 0, false, true);
       }
     }
   }
@@ -683,10 +772,22 @@ function drawEnemy(e) {
     case "shooter": polygon(x, y, r * 1.2, 4, Math.PI / 4); break;
     case "splitter": ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); break;
     case "boss": ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); break;
+    case "bomber": polygon(x, y, r * (1 + 0.12 * Math.sin(e.t * 14)), 8, e.t * 3); break;
+    case "charger": polygon(x, y, r * 1.3, 3, Math.atan2(e.cy || 0, e.cx || 1)); break;
+    case "sniper": polygon(x, y, r * 1.25, 4, 0); break;
+    case "nest": polygon(x, y, r, 6, e.t * 0.3); break;
+    case "wraith": ctx.beginPath(); ctx.arc(x, y - r * 0.2, r, Math.PI, 0); for (let i = 0; i < 4; i++) ctx.lineTo(x + r - i * r * 0.5, y + r * 0.9 + (i % 2) * 3); ctx.closePath(); ctx.globalAlpha = Math.sin(e.t * 4) > 0.7 ? 0.35 : 0.9; break;
     default: ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
   }
-  ctx.fill(); ctx.stroke();
+  if (G.t < e.slow) ctx.strokeStyle = "#b6f2ff";
+  ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+  if (e.type === "sniper" && e.aim > 0) { ctx.strokeStyle = `rgba(255,46,99,${0.35 + 0.4 * (1 - e.aim)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(e.aa) * 900, y + Math.sin(e.aa) * 900); ctx.stroke(); }
+  if (e.type === "charger" && e.cs === 1) { ctx.strokeStyle = `rgba(255,143,209,${0.3 + 0.5 * (1 - e.ct / 0.75)})`; ctx.lineWidth = r * 1.2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + e.cx * 520 * 0.55, y + e.cy * 520 * 0.55); ctx.stroke(); }
   if (e.flash <= 0) {
+    if (e.type === "bomber") { ctx.fillStyle = Math.sin(e.t * 16) > 0 ? "#ffd2a8" : e.col; ctx.beginPath(); ctx.arc(x, y, r * 0.38, 0, TAU); ctx.fill(); }
+    else if (e.type === "sniper") { ctx.strokeStyle = e.col; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r * 0.5, 0, TAU); ctx.moveTo(x - r * 0.9, y); ctx.lineTo(x + r * 0.9, y); ctx.moveTo(x, y - r * 0.9); ctx.lineTo(x, y + r * 0.9); ctx.stroke(); }
+    else if (e.type === "nest") { ctx.fillStyle = e.col; for (let i = 0; i < 3; i++) { const a = e.t + i / 3 * TAU; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * 0.4, y + Math.sin(a) * r * 0.4, r * 0.18 + 1.5 * Math.sin(e.t * 5 + i), 0, TAU); ctx.fill(); } }
+    else if (e.type === "wraith") { ctx.fillStyle = e.col; ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.2, 1.8, 0, TAU); ctx.arc(x + r * 0.3, y - r * 0.2, 1.8, 0, TAU); ctx.fill(); }
     if (e.type === "grunt") { ctx.fillStyle = e.col; for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(x + Math.cos(ang) * r * 0.35 - Math.sin(ang) * r * 0.38 * s, y + Math.sin(ang) * r * 0.35 + Math.cos(ang) * r * 0.38 * s, r * 0.2, 0, TAU); ctx.fill(); } }
     else if (e.type === "shooter") { ctx.fillStyle = e.col; ctx.beginPath(); ctx.arc(x, y, r * 0.35, 0, TAU); ctx.fill(); }
     else if (e.type === "splitter") { ctx.beginPath(); ctx.moveTo(x - r * 0.5, y); ctx.lineTo(x + r * 0.5, y); ctx.moveTo(x, y - r * 0.5); ctx.lineTo(x, y + r * 0.5); ctx.stroke(); }
@@ -721,6 +822,15 @@ function drawWorld(t) {
     for (let i = 0; i < b.pts.length - 1; i++) { const [x0, y0] = b.pts[i], [x1, y1] = b.pts[i + 1]; ctx.moveTo(x0, y0); const n = 6; for (let k = 1; k < n; k++) { const f = k / n; ctx.lineTo(x0 + (x1 - x0) * f + rnd(-9, 9), y0 + (y1 - y0) * f + rnd(-9, 9)); } ctx.lineTo(x1, y1); }
     ctx.stroke(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
   }
+  // aura, meteory, drony
+  if (G.lv.aura) { const R = 62 + 16 * G.lv.aura, pul = 0.6 + 0.4 * Math.sin(t * 5); halo(P.x, P.y, "#7dffd9", R * 1.15, 0.25 * pul); ctx.globalAlpha = 0.5; ctx.strokeStyle = "#7dffd9"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(P.x, P.y, R, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
+  for (const m of meteors) {
+    const k = m.t / m.delay; ctx.globalAlpha = 0.35 + 0.4 * k; ctx.strokeStyle = "#ff9d5c"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(m.x, m.y, m.rad, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.rad * k, 0, TAU); ctx.stroke();
+    halo(m.x, m.y - (1 - k) * 420, "#ff9d5c", 26, 0.95); ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(m.x, m.y - (1 - k) * 420); ctx.lineTo(m.x + 30, m.y - (1 - k) * 420 - 90); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  if (G.lv.drone) for (let i = 0; i < G.lv.drone; i++) { const a = G.droneA + i / G.lv.drone * TAU, dx = P.x + Math.cos(a) * 96, dy = P.y + Math.sin(a) * 96; halo(dx, dy, "#c7f0ff", 22, 0.9); ctx.globalAlpha = 1; ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(dx, dy - 5); ctx.lineTo(dx + 4, dy); ctx.lineTo(dx, dy + 5); ctx.lineTo(dx - 4, dy); ctx.closePath(); ctx.fill(); }
   // piły, miny, lasery
   for (const sw of saws) {
     halo(sw.x, sw.y, "#9ad7ff", sw.r * 2.4, 0.8); ctx.globalAlpha = 1;
@@ -864,7 +974,7 @@ window.addEventListener("keydown", e => {
 });
 window.addEventListener("keyup", e => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
 window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
-cv.addEventListener("pointerdown", e => { if (touch.id === null) { touch.id = e.pointerId; touch.ox = touch.x = e.clientX; touch.oy = touch.y = e.clientY; cv.setPointerCapture(e.pointerId); } });
+cv.addEventListener("pointerdown", e => { if (touch.id === null) { touch.id = e.pointerId; touch.ox = touch.x = e.clientX; touch.oy = touch.y = e.clientY; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ok */ } } });
 cv.addEventListener("pointermove", e => { if (e.pointerId === touch.id) { touch.x = e.clientX; touch.y = e.clientY; } });
 const tEnd = e => { if (e.pointerId === touch.id) touch.id = null; };
 cv.addEventListener("pointerup", tEnd); cv.addEventListener("pointercancel", tEnd);
@@ -900,7 +1010,7 @@ const CMD = {
     ["help                  – lista komend", "stats                 – czas, poziom i liczba zniszczonych wrogów", "version               – wersja gry", "clear                 – czyści konsolę"].forEach(l => cprint(l));
     if (!cheat) return;
     cprint("Cheaty:", "ok");
-    ["/die                  – niszczy wszystkie potwory", "sv_cheat 0            – wyłącza cheaty", "god                   – nieśmiertelność (przełącznik)", "heal                  – pełne życie", "xp <ile>              – dodaje doświadczenie", "level                 – natychmiastowy nowy poziom", "give <broń> [1-5]     – daje broń (bolt orbit nova lightning rocket saw mine laser)", "weapons               – wszystkie bronie na maksimum", "speed <mnożnik>       – szybkość ruchu (np. speed 1.5)", "boss                  – przywołuje strażnika roju", "spawn <typ> [ile]     – grunt dart brute shooter splitter", "time <sekundy>        – przewija czas gry"].forEach(l => cprint(l, "ok"));
+    ["/die                  – niszczy wszystkie potwory", "sv_cheat 0            – wyłącza cheaty", "god                   – nieśmiertelność (przełącznik)", "heal                  – pełne życie", "xp <ile>              – dodaje doświadczenie", "level                 – natychmiastowy nowy poziom", "give <broń> [1-5]     – daje broń (" + Object.keys(WEAPONS).join(" ") + ")", "weapons               – wszystkie bronie na maksimum", "speed <mnożnik>       – szybkość ruchu (np. speed 1.5)", "boss                  – przywołuje strażnika roju", "spawn <typ> [ile]     – " + Object.keys(ET).filter(k => k !== "boss").join(" "), "time <sekundy>        – przewija czas gry"].forEach(l => cprint(l, "ok"));
   },
   stats() { if (!G) return; cprint(`Czas ${fmtTime(G.t)} · poziom ${G.level} · zniszczone ${G.kills} · fala wrogów ${enemies.length}`); },
   version() { cprint("Roj 1.0"); },
@@ -924,7 +1034,7 @@ const CMD = {
   weapons() { if (!cheatOnly() || !G) return; for (const k in WEAPONS) G.lv[k] = 5; recalc(); refreshKit(); cprint("Wszystkie bronie: poziom 5.", "ok"); },
   speed(a) { if (!cheatOnly() || !G) return; G.spdMul = clamp(+a || 1, 0.3, 4); recalc(); cprint(`Szybkość ×${G.spdMul}`, "ok"); },
   boss() { if (!cheatOnly() || !G) return; if (G.boss) { cprint("Strażnik już jest.", "warn"); return; } const [x, y] = ringPos(); G.boss = spawnEnemy("boss", x, y); G.bossN++; $("#bossBar").classList.add("on"); cprint("Strażnik roju przywołany.", "ok"); },
-  spawn(a, b) { if (!cheatOnly() || !G) return; if (!ET[a] || a === "boss") { cprint("Użycie: spawn <grunt|dart|brute|shooter|splitter> [ile]", "err"); return; } const n = clamp(+b || 5, 1, 100); for (let i = 0; i < n; i++) { const [x, y] = ringPos(); spawnEnemy(a, x, y); } cprint(`Dodano ${n} × ${a}.`, "ok"); },
+  spawn(a, b) { if (!cheatOnly() || !G) return; if (!ET[a] || a === "boss") { cprint("Użycie: spawn <" + Object.keys(ET).filter(k => k !== "boss").join("|") + "> [ile]", "err"); return; } const n = clamp(+b || 5, 1, 100); for (let i = 0; i < n; i++) { const [x, y] = ringPos(); spawnEnemy(a, x, y); } cprint(`Dodano ${n} × ${a}.`, "ok"); },
   time(a) { if (!cheatOnly() || !G) return; G.t += Math.max(0, +a || 60); cprint(`Czas: ${fmtTime(G.t)}`, "ok"); },
 };
 function conRun(line) {
