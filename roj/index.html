@@ -897,10 +897,10 @@ function dieAll() {
 }
 const CMD = {
   help() {
-    ["help                  – lista komend", "sv_cheat <kod>        – włącz cheaty (szybsze bronie i dodatkowe komendy)", "/die                  – niszczy wszystkie potwory (działa zawsze)", "clear                 – czyści konsolę"].forEach(l => cprint(l));
-    cprint(cheat ? "Cheaty włączone. Dostępne:" : "Po sv_cheat odblokujesz:", cheat ? "ok" : "warn");
-    ["god                   – nieśmiertelność (przełącznik)", "heal                  – pełne życie", "xp <ile>              – dodaje doświadczenie", "level                 – natychmiastowy nowy poziom", "give <broń> [1-5]     – daje broń (bolt orbit nova lightning rocket saw mine laser)", "weapons               – wszystkie bronie na maksimum", "speed <mnożnik>       – szybkość ruchu (np. speed 1.5)", "boss                  – przywołuje strażnika roju", "spawn <typ> [ile]     – grunt dart brute shooter splitter", "time <sekundy>        – przewija czas gry"].forEach(l => cprint(l, cheat ? "" : "warn"));
+    ["help                  – lista komend", "stats                 – czas, poziom i liczba zniszczonych wrogów", "version               – wersja gry", "clear                 – czyści konsolę"].forEach(l => cprint(l));
   },
+  stats() { if (!G) return; cprint(`Czas ${fmtTime(G.t)} · poziom ${G.level} · zniszczone ${G.kills} · fala wrogów ${enemies.length}`); },
+  version() { cprint("Roj 1.0"); },
   clear() { con.log.innerHTML = ""; },
   sv_cheat(a) {
     if (a === undefined) { cprint(`sv_cheat = ${cheat ? "2137" : "0"}`); return; }
