@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Osada — symulator życia</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="brand"><span class="logo">🏡</span><div><b>Osada</b><small>symulator życia</small></div></div>
+    <div class="speed" id="speed">
+      <button data-s="0" title="Pauza (spacja)">⏸</button>
+      <button data-s="1" class="on" title="Normalnie (1)">▶</button>
+      <button data-s="3" title="Szybko (2)">⏩</button>
+      <button data-s="10" title="Bardzo szybko (3)">⏭</button>
+    </div>
+    <div class="clock"><span id="clockIcon">☀️</span><div><b id="clockTime">07:00</b><small id="clockDay">Dzień 1</small></div></div>
+    <div class="stat" id="popStat">👥 6</div>
+    <div class="spacer"></div>
+    <div class="top-btns">
+      <button id="btnSave" title="Zapisz grę">💾</button>
+      <button id="btnLoad" title="Wczytaj grę">📂</button>
+      <button id="btnNew" title="Nowy świat">🆕</button>
+      <button id="btnFs" title="Pełny ekran (F)">⛶</button>
+      <button id="btnSet" title="Ustawienia">⚙️</button>
+      <button id="btnHelp" title="Pomoc">❓</button>
+    </div>
+  </header>
+
+  <aside id="tools"></aside>
+
+  <main id="stage">
+    <canvas id="view"></canvas>
+    <div id="toasts"></div>
+    <div id="toolHint" class="tool-hint" hidden></div>
+    <div id="tip" class="tip" hidden></div>
+    <div id="feed"></div>
+  </main>
+
+  <aside id="inspect"><div class="empty">Kliknij mieszkańca, aby zobaczyć jego życie.</div></aside>
+
+  <div id="settings" class="pop" hidden>
+    <h3>Ustawienia</h3>
+    <label><input type="checkbox" id="optWeather" checked> Losowa pogoda</label>
+    <label><input type="checkbox" id="optEvents" checked> Losowe wydarzenia</label>
+    <label><input type="checkbox" id="optNames"> Zawsze pokazuj imiona</label>
+    <label><input type="checkbox" id="optDeath"> Starość i śmierć</label>
+    <button id="btnCenter" class="wide">🎯 Wyśrodkuj kamerę</button>
+  </div>
+
+  <div id="help" class="modal" hidden>
+    <div class="box">
+      <button class="close" data-close>✕</button>
+      <h2>Jak to działa</h2>
+      <p>Mieszkańcy żyją sami: jedzą, śpią, pracują, zakochują się, kłócą i zakładają rodziny. Każdy ma charakter, potrzeby i własne decyzje. Ty jesteś bogiem-piaskownicą.</p>
+      <ul>
+        <li><b>Klik</b> w mieszkańca – podgląd, rozmowa, komendy. <b>Przeciągnij</b> go, by przenieść.</li>
+        <li><b>Przeciąganie tła</b> lub prawy przycisk – ruch kamery, <b>kółko</b> – zoom (na telefonie: dwa palce).</li>
+        <li><b>Lewy panel</b> – buduj dom, sadź drzewa, maluj teren, wywołuj wydarzenia.</li>
+        <li><b>Rozmowa</b> – napisz do mieszkańca, np. „cześć”, „jak się masz?”, „idź spać”, „zagraj na pianinie”, „pogadaj z Olą”.</li>
+        <li>Skróty: <kbd>Spacja</kbd> pauza · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> tempo · <kbd>Esc</kbd> anuluj narzędzie · <kbd>Del</kbd> usuń zaznaczony obiekt · <kbd>F</kbd> pełny ekran.</li>
+      </ul>
+      <p class="muted">Gra zapisuje się automatycznie w przeglądarce.</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/world.js"></script>
+<script src="js/chars.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
