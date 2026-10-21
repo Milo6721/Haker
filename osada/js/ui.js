@@ -111,7 +111,17 @@ class UI {
     document.querySelectorAll("#speed button").forEach(b => b.addEventListener("click", () => this.setSpeed(+b.dataset.s)));
     $("#btnSave").addEventListener("click", () => { this.save(); this.toast("💾 Zapisano grę", "good"); });
     $("#btnLoad").addEventListener("click", () => this.loadSave(true));
-    $("#btnNew").addEventListener("click", () => { if (confirm("Zacząć nowy świat? Obecny zostanie utracony (chyba że zapisany).")) { sim.reset(); this.select(null); this.r.fit(); this.toast("🆕 Nowy świat", "good"); } });
+    let newArmed = 0;
+    $("#btnNew").addEventListener("click", () => {
+      const b = $("#btnNew");
+      if (!newArmed) {
+        newArmed = setTimeout(() => { newArmed = 0; b.textContent = "🆕"; }, 3000);
+        b.textContent = "Na pewno?"; this.toast("Kliknij jeszcze raz, aby zacząć nowy świat", "bad");
+        return;
+      }
+      clearTimeout(newArmed); newArmed = 0; b.textContent = "🆕";
+      sim.reset(); this.select(null); this.r.fit(); this.toast("🆕 Nowy świat", "good");
+    });
     $("#btnSet").addEventListener("click", () => { const s = $("#settings"); s.hidden = !s.hidden; });
     $("#btnHelp").addEventListener("click", () => { $("#help").hidden = false; });
     $("#help").addEventListener("click", e => { if (e.target.id === "help" || e.target.dataset.close !== undefined) $("#help").hidden = true; });
