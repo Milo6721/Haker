@@ -905,7 +905,7 @@ const CMD = {
   sv_cheat(a) {
     if (a === undefined) { cprint(`sv_cheat = ${cheat ? "2137" : "0"}`); return; }
     if (a === "2137") { cheat = true; if (G) recalc(); $("#cheatTag").classList.add("on"); cprint("Cheaty WŁĄCZONE: bronie strzelają 2.2× szybciej. Wpisz help.", "ok"); }
-    else if (a === "0") { cheat = false; if (G) { recalc(); G.god = false; } $("#cheatTag").classList.remove("on"); cprint("Cheaty wyłączone.", "warn"); }
+    else if (a === "0") { cheat = false; if (G) { G.god = false; G.spdMul = 1; recalc(); } $("#cheatTag").classList.remove("on"); cprint("Cheaty wyłączone.", "warn"); }
     else cprint("Błędny kod.", "err");
   },
   die() { dieAll(); },
