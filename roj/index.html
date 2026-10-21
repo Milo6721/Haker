@@ -87,6 +87,7 @@ button:focus-visible { outline: 2px solid var(--cy); outline-offset: 2px; }
 #conLog .cmd { color: var(--cy); } #conLog .ok { color: var(--grn); } #conLog .err { color: var(--red); } #conLog .warn { color: var(--yel); }
 #conForm { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 6px; }
 #conForm span { color: var(--cy); font-weight: 700; }
+#conClose { width: 34px; height: 34px; flex: none; color: var(--ink); }
 #conIn { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font: inherit; font-size: 14px; caret-color: var(--cy); }
 .cheatTag { position: fixed; left: 50%; bottom: max(8px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-size: 11px; letter-spacing: .3em; color: var(--red); text-transform: uppercase; opacity: .85; z-index: 4; pointer-events: none; display: none; }
 .cheatTag.on { display: block; }
@@ -119,7 +120,7 @@ button:focus-visible { outline: 2px solid var(--cy); outline-offset: 2px; }
 
 <div id="con" aria-hidden="true">
   <div id="conLog"></div>
-  <form id="conForm" autocomplete="off"><span>]</span><input id="conIn" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="wpisz help"></form>
+  <form id="conForm" autocomplete="off"><span>]</span><input id="conIn" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="wpisz help"><button type="button" id="conClose" class="ib" title="Zamknij (Esc lub ~)" aria-label="Zamknij konsolę">✕</button></form>
 </div>
 <div class="cheatTag" id="cheatTag">cheats on</div>
 
@@ -939,6 +940,7 @@ con.inp.addEventListener("keydown", e => {
   else if (e.key === "Tab") { e.preventDefault(); const v = con.inp.value.toLowerCase().replace(/^\//, ""); const m = Object.keys(CMD).filter(k => k.startsWith(v)); if (m.length === 1) con.inp.value = m[0] + " "; else if (m.length > 1) cprint(m.join("  ")); }
 });
 $("#btnCon").addEventListener("click", () => conToggle());
+$("#conClose").addEventListener("click", () => conToggle(false));
 
 /* ============ start ============ */
 for (let i = 0; i < 60; i++) ambient.push({ x: rnd(-700, 700), y: rnd(-450, 450), r: rnd(10, 40), c: pick(["#34f0ff", "#ff3d9a", "#a56bff"]), vx: rnd(-8, 8), vy: rnd(-8, 8) });
