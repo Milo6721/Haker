@@ -276,7 +276,7 @@ try { best = +localStorage.getItem("roj-best") || 0; } catch (e) {}
 
 const needFor = l => Math.floor(3 + l * 2.5 + l * l * 0.35);
 function newGame() {
-  G = { t: 0, kills: 0, level: 1, xp: 0, need: needFor(1), spawn: 0, ring: 70, nextBoss: 120, boss: null, bossN: 0, lv: { bolt: 1, orbit: 0, nova: 0, lightning: 0, rocket: 0, saw: 0, mine: 0, laser: 0, aura: 0, meteor: 0, drone: 0, frost: 0 }, ps: { speed: 0, hp: 0, magnet: 0, dmg: 0, haste: 0, regen: 0 }, wt: { bolt: 0.2, nova: 1.5, lightning: 1, rocket: 1.5, saw: 1, mine: 1, laser: 1.5, aura: 0.25, meteor: 2, frost: 3 }, droneA: 0, droneT: [0, 0, 0, 0, 0], god: false, orbA: 0, auto: 0, comboT: 0, combo: 0, bot: G ? G.bot : false };
+  G = { t: 0, kills: 0, level: 1, xp: 0, need: needFor(1), spawn: 0, ring: 70, nextBoss: 120, boss: null, bossN: 0, power: 1, lv: { bolt: 1, orbit: 0, nova: 0, lightning: 0, rocket: 0, saw: 0, mine: 0, laser: 0, aura: 0, meteor: 0, drone: 0, frost: 0 }, ps: { speed: 0, hp: 0, magnet: 0, dmg: 0, haste: 0, regen: 0 }, wt: { bolt: 0.2, nova: 1.5, lightning: 1, rocket: 1.5, saw: 1, mine: 1, laser: 1.5, aura: 0.25, meteor: 2, frost: 3 }, droneA: 0, droneT: [0, 0, 0, 0, 0], god: false, orbA: 0, auto: 0, comboT: 0, combo: 0, bot: G ? G.bot : false };
   P = { x: 0, y: 0, vx: 0, vy: 0, r: 11, hp: 120, max: 120, speed: 215, inv: 0, dashT: 0, dashCd: 0, mag: 120, dmg: 1, haste: 1, regen: 0, ang: 0, flash: 0 };
   enemies = []; pbul = []; ebul = []; gems = []; pups = []; parts = []; texts = []; rings = []; bolts = []; rockets = []; saws = []; mines = []; lasers = []; meteors = [];
   cam.x = cam.sx = P.x; cam.y = cam.sy = P.y; shake = 0;
@@ -284,6 +284,7 @@ function newGame() {
 }
 function recalc() {
   P.speed = (G.spdMul || 1) * 215 * (1 + 0.08 * G.ps.speed); P.max = 120 + 30 * G.ps.hp; P.mag = 120 * (1 + 0.35 * G.ps.magnet);
+  G.power = Object.values(G.lv).reduce((a, b) => a + b, 0) + Object.values(G.ps).reduce((a, b) => a + b, 0) + (cheat ? 8 : 0);
   P.dmg = 1 + 0.12 * G.ps.dmg; P.haste = (1 + 0.1 * G.ps.haste) * (cheat ? 2.2 : 1); P.regen = 0.35 + 0.6 * G.ps.regen;
 }
 
@@ -323,8 +324,11 @@ function nearest(x, y, max, skip) {
 
 /* ============ wrogowie ============ */
 function spawnEnemy(type, x, y, extra) {
-  const d = ET[type], hm = 1 + G.t / 190;
-  const e = Object.assign({ id: uid++, type, x, y, vx: 0, vy: 0, r: d.r, hp: d.hp * (type === "boss" ? 1 + G.bossN * 0.7 : hm), dmg: d.dmg * (1 + G.t / 650), col: d.col, flash: 0, t: rnd(0, 6), fire: rnd(1, 2.5), dead: false, hitOrb: 0, kx: 0, ky: 0, st: 0, st2: 0, cs: 0, ct: rnd(1, 3), aim: 0, spawnT: rnd(1.5, 3), slow: 0 }, extra);
+  const d = ET[type], pw = G.power || 1, hm = (1 + G.t / 190) * (1 + pw * 0.035) * (1 + Math.max(0, pw - 25) * 0.08);
+  const e = Object.assign({ id: uid++, type, x, y, vx: 0, vy: 0, r: d.r, hp: d.hp * (type === "boss" ? (1 + G.bossN * 0.7) * (1 + pw * 0.045) : hm), dmg: d.dmg * (1 + G.t / 650) * (1 + pw * 0.011), col: d.col, flash: 0, t: rnd(0, 6), fire: rnd(1, 2.5), dead: false, hitOrb: 0, kx: 0, ky: 0, st: 0, st2: 0, cs: 0, ct: rnd(1, 3), aim: 0, spawnT: rnd(1.5, 3), slow: 0 }, extra);
+  if (extra === undefined && type !== "boss" && type !== "nest" && G.t > 100 && Math.random() < 0.03 + pw * 0.002) {   // elita
+    e.elite = true; e.hp *= 3.5; e.r *= 1.35; e.dmg *= 1.3; e.xpMul = 4;
+  }
   e.max = e.hp;
   enemies.push(e); return e;
 }
@@ -333,9 +337,9 @@ function ringPos() {
   return [P.x + Math.cos(a) * R, P.y + Math.sin(a) * R];
 }
 function pickType() {
-  const t = G.t, w = [["grunt", 10]];
+  const t = G.t + (G.power || 1) * 4, w = [["grunt", 10]];
   if (t > 25) w.push(["dart", 3 + t * 0.025]);
-  if (t > 55) w.push(["shooter", 1.4 + t * 0.012]);
+  if (t > 55) w.push(["shooter", 1.4 + t * 0.012 + (G.power || 1) * 0.06]);
   if (t > 85) w.push(["brute", 1.1 + t * 0.01]);
   if (t > 120) w.push(["splitter", 1.1 + t * 0.01]);
   if (t > 70) w.push(["wraith", 1.2 + t * 0.01]);
@@ -348,19 +352,19 @@ function pickType() {
   return "grunt";
 }
 function director(dt) {
-  const t = G.t, rate = 1.7 + t * 0.02 + Math.max(0, t - 200) * 0.008;
+  const t = G.t, pw = G.power || 1, rate = (1.7 + t * 0.02 + Math.max(0, t - 200) * 0.008) * (1 + pw * 0.07);
   G.spawn += rate * dt;
-  const cap = Math.min(340, 120 + t * 0.6);
+  const cap = Math.min(720, 120 + t * 0.6 + pw * 11);
   while (G.spawn >= 1) {
     G.spawn--;
     if (enemies.length >= cap) continue;
-    const type = pickType(), [x, y] = ringPos(), n = type === "dart" ? rint(2, 4) : 1;
+    const type = pickType(), [x, y] = ringPos(), n = type === "dart" ? rint(2, 4) : pw > 25 && Math.random() < 0.4 ? rint(2, 3) : 1;
     for (let i = 0; i < n; i++) spawnEnemy(type, x + rnd(-24, 24), y + rnd(-24, 24));
   }
   G.ring -= dt;
   if (G.ring <= 0) {                                   // okrążenie
-    G.ring = rnd(60, 76);
-    const n = 20 + Math.floor(t / 22), R = Math.hypot(cw, ch) / (2 * S) + 30;
+    G.ring = rnd(60, 76) / (1 + pw * 0.012);
+    const n = 20 + Math.floor(t / 22) + Math.floor(pw * 0.8), R = Math.hypot(cw, ch) / (2 * S) + 30;
     for (let i = 0; i < n; i++) { const a = i / n * TAU; spawnEnemy("grunt", P.x + Math.cos(a) * R, P.y + Math.sin(a) * R); }
     text(P.x, P.y - 60, "OKRĄŻENIE!", "#ff3d9a", 18); Snd.boss();
   }
@@ -449,14 +453,14 @@ function killEnemy(e) {
   ring(e.x, e.y, e.r * 2.2, e.col, 0.3, 2);
   Snd.kill();
   if (e.type === "splitter" && !G.noSplit && enemies.length < 560) for (let i = 0; i < 3; i++) { const a = i / 3 * TAU + rnd(0, 1); spawnEnemy("dart", e.x + Math.cos(a) * 10, e.y + Math.sin(a) * 10, { kx: Math.cos(a) * 200, ky: Math.sin(a) * 200 }); }
-  const val = e.type === "boss" ? 0 : d.xp;
+  const val = e.type === "boss" ? 0 : d.xp * (e.xpMul || 1);
   if (e.type === "boss") {
     for (let i = 0; i < 14; i++) { const a = rnd(0, TAU), r = rnd(10, 70); gems.push({ x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r, v: 8, fly: false }); }
     pups.push({ x: e.x, y: e.y, type: "heal" }, { x: e.x + 30, y: e.y, type: "bomb" });
     G.boss = null; $("#bossBar").classList.remove("on"); addShake(14);
     text(e.x, e.y - 40, "STRAŻNIK POKONANY", "#ffe14d", 20);
   } else gems.push({ x: e.x, y: e.y, v: val >= 5 ? 5 : val >= 3 ? 2 : 1, fly: false });
-  if (e.type !== "boss" && Math.random() < (e.type === "brute" ? 0.2 : 0.025)) pups.push({ x: e.x, y: e.y, type: pick(["heal", "magnet", "bomb"]) });
+  if (e.type !== "boss" && Math.random() < (e.elite ? 0.5 : e.type === "brute" ? 0.2 : 0.025)) pups.push({ x: e.x, y: e.y, type: pick(["heal", "magnet", "bomb"]) });
   addShake(e.type === "brute" ? 2.5 : 0.7);
 }
 function hurtPlayer(dmg, x, y) {
@@ -779,6 +783,7 @@ function drawEnemy(e) {
     case "wraith": ctx.beginPath(); ctx.arc(x, y - r * 0.2, r, Math.PI, 0); for (let i = 0; i < 4; i++) ctx.lineTo(x + r - i * r * 0.5, y + r * 0.9 + (i % 2) * 3); ctx.closePath(); ctx.globalAlpha = Math.sin(e.t * 4) > 0.7 ? 0.35 : 0.9; break;
     default: ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
   }
+  if (e.elite && e.flash <= 0) ctx.strokeStyle = "#ffe14d";
   if (G.t < e.slow) ctx.strokeStyle = "#b6f2ff";
   ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
   if (e.type === "sniper" && e.aim > 0) { ctx.strokeStyle = `rgba(255,46,99,${0.35 + 0.4 * (1 - e.aim)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(e.aa) * 900, y + Math.sin(e.aa) * 900); ctx.stroke(); }
@@ -798,6 +803,7 @@ function drawEnemy(e) {
       for (let i = 0; i < 8; i++) { const a = e.t * 0.8 + i / 8 * TAU; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.lineTo(x + Math.cos(a) * (r + 12), y + Math.sin(a) * (r + 12)); ctx.stroke(); }
     }
   }
+  if (e.elite) { ctx.globalAlpha = 0.5 + 0.3 * Math.sin(e.t * 6); ctx.strokeStyle = "#ffe14d"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 5, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
   if (e.hp < e.max && e.type !== "boss") { ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillRect(x - r, y - r - 8, r * 2, 3); ctx.fillStyle = e.col; ctx.fillRect(x - r, y - r - 8, r * 2 * Math.max(0, e.hp / e.max), 3); }
 }
 function drawWorld(t) {
